@@ -28,20 +28,17 @@
 #include "TinyWireM.h"
 
 void SSD1306_Mini::sendCommand(unsigned char command) {
-  TinyWireM.beginTransmission(itsAddress);
-  TinyWireM.send(GOFi2cOLED_Command_Mode);
-  TinyWireM.send(command);
-  TinyWireM.endTransmission();
+  TinyWireM.prepareTransmission(itsAddress);
+  TinyWireM.queueForTransmission(GOFi2cOLED_Command_Mode);
+  TinyWireM.queueForTransmission(command);
+  TinyWireM.performTransmission();
 }
 
 void SSD1306_Mini::sendData(unsigned char data[4]) {
-  TinyWireM.beginTransmission(itsAddress);
-  TinyWireM.send(GOFi2cOLED_Data_Mode);
-  TinyWireM.send(data[0]);
-  TinyWireM.send(data[1]);
-  TinyWireM.send(data[2]);
-  TinyWireM.send(data[3]);
-  TinyWireM.endTransmission();
+  TinyWireM.prepareTransmission(itsAddress);
+  TinyWireM.queueForTransmission(GOFi2cOLED_Data_Mode);
+  TinyWireM.queueForTransmission(data, 4);
+  TinyWireM.performTransmission();
 }
 
 void SSD1306_Mini::init() {
@@ -94,15 +91,17 @@ void SSD1306_Mini::init() {
   sendCommand(GOFi2cOLED_Display_On_Cmd);
 }
 
+/*
 void SSD1306_Mini::die() {
-  TinyWireM.beginTransmission(itsAddress);
-  TinyWireM.send(GOFi2cOLED_Data_Mode);
-  TinyWireM.send(0xFF);
-  TinyWireM.send(0x81);
-  TinyWireM.send(0x81);
-  TinyWireM.send(0xFF);
-  TinyWireM.endTransmission();
+  TinyWireM.prepareTransmission(itsAddress);
+  TinyWireM.queueForTransmission(GOFi2cOLED_Data_Mode);
+  TinyWireM.queueForTransmission(0xFF);
+  TinyWireM.queueForTransmission(0x81);
+  TinyWireM.queueForTransmission(0x81);
+  TinyWireM.queueForTransmission(0xFF);
+  TinyWireM.performTransmission();
 }
+*/
 
 void SSD1306_Mini::cursorTo(unsigned char row, unsigned char col) {
   sendCommand(0x00 | (0x0F & col) );  // low col = 0
@@ -113,23 +112,18 @@ void SSD1306_Mini::cursorTo(unsigned char row, unsigned char col) {
 }
 
 void SSD1306_Mini::startScreen(){
-  sendCommand(0x00 | 0x0);  // low col = 0
-  sendCommand(0x10 | 0x0);  // hi col = 0
   sendCommand(0x40 | 0x0); // line #0
 }
 
 void SSD1306_Mini::clear() {
-  sendCommand(0x00 | 0x0);  // low col = 0
-  sendCommand(0x10 | 0x0);  // hi col = 0
-  sendCommand(0x40 | 0x0); // line #0
-    
-  for (uint16_t i=0; i<=((128*64/8)/16); i++) {
-    // send a bunch of data in one xmission
-    TinyWireM.beginTransmission(itsAddress);
-    TinyWireM.send(GOFi2cOLED_Data_Mode);            // data mode
-    for (uint8_t k=0;k<16;k++){
-      TinyWireM.send( 0 );
+  startScreen();
+  
+  for (uint16_t i=0; i < 128*64/8/16; ++i) {
+    TinyWireM.prepareTransmission(itsAddress);
+    TinyWireM.queueForTransmission(GOFi2cOLED_Data_Mode);
+    for (uint8_t k = 0; k < 16; ++k){
+      TinyWireM.queueForTransmission(0);
     }
-    TinyWireM.endTransmission();
+    TinyWireM.performTransmission();
   }
 }

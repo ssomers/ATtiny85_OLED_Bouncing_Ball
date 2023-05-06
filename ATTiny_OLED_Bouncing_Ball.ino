@@ -68,11 +68,11 @@ void displayRoom() {
 
   for (char r = 0; r < RowCount; r += 2) {
     for (char c = 0; c < ColCount; c += 1){
-      uint8_t upperRow= getRoom(r, c);
-      uint8_t lowerRow= getRoom(r+1, c);
+      uint8_t upperRow = getRoom(r, c);
+      uint8_t lowerRow = getRoom(r+1, c);
      
-      bool upperSnake= getSnake(r, c);
-      bool lowerSnake= getSnake(r+1, c);
+      bool upperSnake = getSnake(r, c);
+      bool lowerSnake = getSnake(r+1, c);
 
       uint8_t data[4] = { 0, 0, 0, 0 };
       
@@ -110,24 +110,18 @@ void displayRoom() {
 }
 
 void move(){
-  char bHitRoom;
-  char hitType;
-  
+  uint8_t rowHitType;
+  uint8_t colHitType;
   do {  
-    bHitRoom= 0;
-    // test row
-    hitType = getRoom(snakeRow + snakeRowDir, snakeCol);
-    if (hitType != 0){
+    rowHitType = getRoom(snakeRow + snakeRowDir, snakeCol);
+    colHitType = getRoom(snakeRow, snakeCol + snakeColDir);
+    if (rowHitType) {
       snakeRowDir = -snakeRowDir;
-      bHitRoom = hitType;
     }
-    // test col
-    hitType = getRoom(snakeRow, snakeCol + snakeColDir);
-    if (hitType != 0){
+    if (colHitType) {
       snakeColDir = -snakeColDir;
-      bHitRoom = hitType;
     }
-  } while (bHitRoom);
+  } while (rowHitType || colHitType);
   
   snakeRow = snakeRow + snakeRowDir;
   snakeCol = snakeCol + snakeColDir;
@@ -142,5 +136,5 @@ void setup() {
 void loop() {
   displayRoom();
   move();
-  delay(60); 
+  delay(50); 
 }

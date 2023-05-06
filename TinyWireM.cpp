@@ -13,9 +13,10 @@
   PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 */
 
-#include "USI_TWI_Master.h"
 #include "TinyWireM.h"
 
+#include "USI_TWI_Master.h"
+#include <string.h> // memcpy hides in there
 
 // Initialize Class Variables //////////////////////////////////////////////////
 	uint8_t USI_TWI::USI_Buf[USI_BUF_SIZE];             // holds I2C send and receive data
@@ -30,28 +31,35 @@ USI_TWI::USI_TWI(){
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void USI_TWI::initialise(){ // initialize I2C lib
+void USI_TWI::initialise() {
   USI_TWI_Master_Initialise();          
 }
 
-void USI_TWI::beginTransmission(uint8_t slaveAddr){ // setup address & write bit
+void USI_TWI::prepareTransmission(uint8_t slaveAddr) {
   USI_BufIdx = 0; 
   USI_Buf[USI_BufIdx] = (slaveAddr<<TWI_ADR_BITS) | USI_SEND; 
 }
 
-void USI_TWI::send(uint8_t data){ // buffers up data to send
-  if (USI_BufIdx >= USI_BUF_SIZE) return;         // dont blow out the buffer
-  USI_BufIdx++;                                   // inc for next byte in buffer
+void USI_TWI::queueForTransmission(uint8_t data) {
+  if (USI_BufIdx + 1 > USI_BUF_SIZE) return;         // dont blow out the buffer
+  USI_BufIdx += 1;
   USI_Buf[USI_BufIdx] = data;
 }
 
-uint8_t USI_TWI::endTransmission(){ // actually sends the buffer
+void USI_TWI::queueForTransmission(uint8_t* data, uint8_t length) {
+  if (USI_BufIdx + length > USI_BUF_SIZE) return;         // dont blow out the buffer
+  memcpy(USI_Buf + USI_BufIdx + 1, data, length);
+  USI_BufIdx += length;
+}
+
+uint8_t USI_TWI::performTransmission() {
   bool xferOK = false;
   uint8_t errorCode = 0;
   xferOK = USI_TWI_Start_Read_Write(USI_Buf,USI_BufIdx+1); // core func that does the work
   USI_BufIdx = 0;
-  if (xferOK) return 0;
-  else {                                  // there was an error
+  if (xferOK) {
+    return 0;
+  } else {
     errorCode = USI_TWI_Get_State_Info(); // this function returns the error number
     return errorCode;
   }
@@ -66,8 +74,9 @@ uint8_t USI_TWI::requestFrom(uint8_t slaveAddr, uint8_t numBytes){ // setup for 
   USI_Buf[0] = (slaveAddr<<TWI_ADR_BITS) | USI_RCVE;   // setup address & Rcve bit
   xferOK = USI_TWI_Start_Read_Write(USI_Buf,numBytes); // core func that does the work
   // USI_Buf now holds the data read
-  if (xferOK) return 0;
-  else {                                  // there was an error
+  if (xferOK) {
+    return 0;
+  } else {
     errorCode = USI_TWI_Get_State_Info(); // this function returns the error number
     return errorCode;
   }
@@ -81,7 +90,6 @@ uint8_t USI_TWI::receive(){ // returns the bytes received one at a time
 uint8_t USI_TWI::available(){ // the bytes available that haven't been read yet
   return USI_BytesAvail - USI_LastRead; 
 }
-
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 

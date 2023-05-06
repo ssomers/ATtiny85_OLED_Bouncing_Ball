@@ -42,8 +42,7 @@
 #define USI_RCVE         1              // indicates receiving from TWI
 #define USI_BUF_SIZE    20              // bytes in message buffer
 
-class USI_TWI
-{
+class USI_TWI {
   private:
 	  static uint8_t USI_Buf[];           // holds I2C send and receive data
 	  static uint8_t USI_BufIdx;          // current number of bytes in the send buff
@@ -53,9 +52,10 @@ class USI_TWI
   public:
  	  USI_TWI();
 	  void initialise();
-    void beginTransmission(uint8_t);
-    void send(uint8_t);
-    uint8_t endTransmission();
+    void prepareTransmission(uint8_t address);
+    void queueForTransmission(uint8_t onebyte);
+    void queueForTransmission(uint8_t* bytes, uint8_t length);
+    uint8_t performTransmission();
     uint8_t requestFrom(uint8_t, uint8_t);
     uint8_t receive(); 
     uint8_t available(); 
