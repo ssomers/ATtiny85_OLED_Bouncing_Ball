@@ -1,5 +1,4 @@
 /*
-
   SSD1306_minimal.h - SSD1306 OLED Driver Library
   2015 Copyright (c) CoPiino Electronics All right reserved.
   
@@ -27,6 +26,7 @@
 #ifndef __SSD1306_MINIMAL_H__
 #define __SSD1306_MINIMAL_H__
 
+#include "TinyWireM.h"
 #include <Arduino.h>
 
 
@@ -34,7 +34,7 @@
 #define GOFi2cOLED_Command_Mode		      0x80
 #define GOFi2cOLED_Data_Mode		      0x40
 
-//Fundamental Command (more than one bytes command pleaserefer to SSD1306 datasheet for details)
+//Fundamental Command (more than one bytes command)
 #define Set_Contrast_Cmd                      0x81     //Double byte command to select 1 out of 256 contrast steps.Default(RESET = 0x7F)
 #define Entire_Display_On_Resume_Cmd          0xA4     //Resume to RAM content display(RESET), Output follows RAM content
 #define Entire_Display_On_Cmd                 0xA5     //Entire display ON, Output ignores RAM content
@@ -43,7 +43,7 @@
 #define GOFi2cOLED_Display_Off_Cmd	      0xAE     //sleep mode(RESET)
 #define GOFi2cOLED_Display_On_Cmd	      0xAF     //normal mode
 
-//Scrolling Command (more than one bytes command pleaserefer to SSD1306 datasheet for details)
+//Scrolling Command (more than one bytes command)
 #define Right_Horizontal_Scroll_Cmd           0x26
 #define Left_Horizontal_Scroll_Cmd            0x27
 #define Vertical_Right_Horizontal_Scroll_Cmd  0x29
@@ -52,7 +52,7 @@
 #define Deactivate_Scroll_Cmd                 0x2E
 #define Set_Vertical_Scroll_Area_Cmd          0xA3
 
-//Addressing Setting Command (more than one bytes command pleaserefer to SSD1306 datasheet for details)
+//Addressing Setting Command (more than one bytes command)
 #define Set_Memory_Addressing_Mode_Cmd        0x20
 #define HORIZONTAL_MODE			      0x00
 #define VERTICAL_MODE			      0x01
@@ -69,7 +69,7 @@
 #define Set_Display_Offset_Cmd                0xD3       //Set vertical shift by COM from 0d~63d. The value is reset to 00h after RESET.
 #define Set_COM_Pins_Hardware_Config_Cmd      0xDA   
 
-//Timing & Driving Scheme Setting Command (more than one bytes command pleaserefer to SSD1some more than one bytes command please 306 datasheet for details)
+//Timing & Driving Scheme Setting Command (more than one bytes command)
 #define Set_Display_Clock_Divide_Ratio_Cmd    0xD5
 #define Set_Precharge_Period_Cmd              0xD9
 #define Set_VCOMH_Deselect_Level_Cmd          0xDB
@@ -91,20 +91,99 @@
 #define Scroll_128Frames		      0x2
 #define Scroll_256Frames		      0x3
 
+template <uint8_t ADDRESS>
 class SSD1306_Mini {
-  public:
-    unsigned char const itsAddress;
+  private: 
+    TinyWireMaster Wire;
 
-    explicit SSD1306_Mini(unsigned char address) : itsAddress(address) {}
-    void sendCommand(unsigned char command);
-    void sendData(unsigned char data[4]);
+  public:
+    void sendCommand(uint8_t command) {
+      Wire.prepareTransmission(ADDRESS);
+      Wire.queueForTransmission(GOFi2cOLED_Command_Mode);
+      Wire.queueForTransmission(command);
+      Wire.performTransmission();
+    }
+
+    template <uint8_t N>
+    void sendData(uint8_t data[N]) {
+      Wire.prepareTransmission(ADDRESS);
+      Wire.queueForTransmission(GOFi2cOLED_Data_Mode);
+      Wire.queueForTransmission<N>(data);
+      Wire.performTransmission();
+    }
     
-    void init();
-    void die();
+    void init() {
+      Wire.initialise();
+      delay(5);  //wait for OLED hardware init
+    
+      sendCommand(GOFi2cOLED_Display_Off_Cmd);
+    
+      sendCommand(Set_Multiplex_Ratio_Cmd);
+      sendCommand(0x3F);    /*duty = 1/64*/
+    
+      sendCommand(Set_Display_Offset_Cmd);
+      sendCommand(0x00);
+    
+      sendCommand(0xB0);  //set page address
+      sendCommand(0x00);  //set column lower address
+      sendCommand(0x10);  //set column higher address
+    
+      sendCommand(Set_Memory_Addressing_Mode_Cmd);
+      sendCommand(HORIZONTAL_MODE);
+    
+      sendCommand(0x40);    /*set display starconstructort line*/
+    
+      sendCommand(Set_Contrast_Cmd);
+      sendCommand(0xcf);
+    
+      sendCommand(Segment_Remap_Cmd);
+    
+      sendCommand(COM_Output_Remap_Scan_Cmd);
+    
+      sendCommand(GOFi2cOLED_Normal_Display_Cmd);
+    
+      sendCommand(Set_Display_Clock_Divide_Ratio_Cmd);
+      sendCommand(0x80);
+    
+      sendCommand(Set_Precharge_Period_Cmd);
+      sendCommand(0xf1);
+    
+      sendCommand(Set_COM_Pins_Hardware_Config_Cmd);
+      sendCommand(0x12);
+    
+      sendCommand(Set_VCOMH_Deselect_Level_Cmd);
+      sendCommand(0x30);
+    
+      sendCommand(Deactivate_Scroll_Cmd);
+    
+      sendCommand(Charge_Pump_Setting_Cmd);
+      sendCommand(Charge_Pump_Enable_Cmd);
+    
+      sendCommand(GOFi2cOLED_Display_On_Cmd);
+    }
   
-    void clear();
-    void startScreen();
-    void cursorTo(unsigned char row, unsigned char col);
+    void clear() {
+      startScreen();
+      for (uint16_t i=0; i < 128*64/8/16; ++i) {
+        Wire.prepareTransmission(ADDRESS);
+        Wire.queueForTransmission(GOFi2cOLED_Data_Mode);
+        for (uint8_t k = 0; k < 16; ++k){
+          Wire.queueForTransmission(0);
+        }
+        Wire.performTransmission();
+      }
+    }
+    
+    void startScreen() {
+      sendCommand(0x40 | 0x0); // line #0
+    }
+    
+    void cursorTo(uint8_t row, uint8_t col) {
+      sendCommand(0x00 | (0x0F & col) );  // low col = 0
+      sendCommand(0x10 | (0x0F & (col>>4)) );  // hi col = 0
+      //  sendCommand(0x40 | (0x0F & row) ); // line #0
+      sendCommand(0xb0 | (0x03 & row) );  // hi col = 0
+    }
 };
 
 #endif

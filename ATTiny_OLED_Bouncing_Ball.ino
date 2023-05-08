@@ -11,13 +11,13 @@
     
 */
 
-unsigned char const ColCount = 32;
-unsigned char const RowCount = 16;
+uint8_t const ColCount = 32;
+uint8_t const RowCount = 16;
 
-SSD1306_Mini oled(0x3c);
+SSD1306_Mini<0x3C> oled;
 
 // there are different wall types
-unsigned char const wall[5][4] = { 
+uint8_t const wall[5][4] = { 
   0x0, 0x0, 0x0, 0x0,
   0xf, 0xf, 0xf, 0xf,
   0xf, 0x9, 0x9, 0xf,
@@ -26,10 +26,10 @@ unsigned char const wall[5][4] = {
 };
 
 // the ball shape
-unsigned char const ball[4] = { 0x6, 0x9, 0x9, 0x6 };
+uint8_t const ball[4] = { 0x6, 0x9, 0x9, 0x6 };
 
-static unsigned char snakeRow = 10;
-static unsigned char snakeCol = 7;  
+static uint8_t snakeRow = 10;
+static uint8_t snakeCol = 7;  
 static char snakeRowDir = +1;
 static char snakeColDir = -1;
 
@@ -54,11 +54,11 @@ const static uint8_t room[] PROGMEM = {
 };
 
 
-unsigned char getRoom(unsigned char row, unsigned char col) {
+uint8_t getRoom(uint8_t row, uint8_t col) {
   return pgm_read_byte(&room[row*ColCount + col]);
 }
 
-bool getSnake(unsigned char row, unsigned char col) {
+bool getSnake(uint8_t row, uint8_t col) {
   return row == snakeRow && col == snakeCol;
 }
 
@@ -104,7 +104,7 @@ void displayRoom() {
         data[3]|= ball[3] << 4;
       }
       
-      oled.sendData(data);
+      oled.sendData<4>(data);
     }
   }  
 }

@@ -37,30 +37,72 @@
 #ifndef TinyWireM_h
 #define TinyWireM_h
 
+#include "USI_TWI_Master.h"
 #include <inttypes.h>
+#include <string.h> // memcpy hides in there
+
 #define USI_SEND         0              // indicates sending to TWI
 #define USI_RCVE         1              // indicates receiving from TWI
 #define USI_BUF_SIZE    20              // bytes in message buffer
 
-class USI_TWI {
+class TinyWireMaster {
   private:
-	  static uint8_t USI_Buf[];           // holds I2C send and receive data
-	  static uint8_t USI_BufIdx;          // current number of bytes in the send buff
-	  static uint8_t USI_LastRead;        // number of bytes read so far
-	  static uint8_t USI_BytesAvail;      // number of bytes requested but not read
+	  uint8_t itsBuf[USI_BUF_SIZE]; // holds I2C send and receive data
+	  uint8_t itsBufIdx;          // current number of bytes in the send buff
+	  uint8_t itsLastRead;        // number of bytes read so far
+	  uint8_t itsBytesAvail;      // number of bytes requested but not read
 	
   public:
- 	  USI_TWI();
-	  void initialise();
-    void prepareTransmission(uint8_t address);
-    void queueForTransmission(uint8_t onebyte);
-    void queueForTransmission(uint8_t* bytes, uint8_t length);
-    uint8_t performTransmission();
-    uint8_t requestFrom(uint8_t, uint8_t);
-    uint8_t receive(); 
-    uint8_t available(); 
-};
+ 	  TinyWireMaster() : itsBufIdx(0), itsLastRead(0), itsBytesAvail(0) {}
+     
+	  void initialise() {
+      USI_TWI_Master_Initialise();          
+	  }
+   
+    void prepareTransmission(uint8_t address) {
+      itsBufIdx = 0; 
+      itsBuf[itsBufIdx] = (address << TWI_ADR_BITS) | USI_SEND; 
+    }
+    
+    void queueForTransmission(uint8_t data) {
+      if (itsBufIdx + 1 > USI_BUF_SIZE) return;         // dont blow out the buffer
+      itsBufIdx += 1;
+      itsBuf[itsBufIdx] = data;
+    }
+    
+    template <uint8_t N>
+    void queueForTransmission(uint8_t data[N]) {
+      if (itsBufIdx + N > USI_BUF_SIZE) return;         // dont blow out the buffer
+      memcpy(itsBuf + itsBufIdx + 1, data, N);
+      itsBufIdx += N;
+    }
+    
+    uint8_t performTransmission() {
+      bool xferOK = USI_TWI_Start_Read_Write(itsBuf, itsBufIdx+1);
+      itsBufIdx = 0;
+      return xferOK ? 0 : USI_TWI_Get_State_Info();
+    }
 
-extern USI_TWI TinyWireM;
+    // Set up for receiving from slave.
+    uint8_t requestFrom(uint8_t slaveAddr, uint8_t numBytes) {
+      itsLastRead = 0;
+      itsBytesAvail = numBytes;
+      numBytes++;                // add extra byte to transmit header
+      itsBuf[0] = (slaveAddr<<TWI_ADR_BITS) | USI_RCVE;   // setup address & Rcve bit
+      bool xferOK = USI_TWI_Start_Read_Write(itsBuf, numBytes); // core func that does the work
+      // USI_Buf now holds the data read
+      return xferOK ? 0 : USI_TWI_Get_State_Info();
+    }
+
+    // Returns the bytes received one at a time.
+    uint8_t receive() {
+      itsLastRead++;     // inc first since first uint8_t read is in itsBuf[1]
+      return itsBuf[itsLastRead];
+}
+    // Number of bytes available that haven't been read yet
+    uint8_t available() const {
+      return itsBytesAvail - itsLastRead; 
+    }
+};
 
 #endif
