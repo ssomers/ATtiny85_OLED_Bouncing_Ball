@@ -2,7 +2,7 @@
 *
 *
 * File              USI_TWI_Master.h compiled with gcc
-* Date              Friday, 10/31/08		Boo!
+* Date              Friday, 10/31/08
 * Updated by        jkl
 *
 *
@@ -12,8 +12,8 @@
 * AppNote           : AVR310 - Using the USI module as a TWI Master
 *
 * This is modified to just do I2C communication on ATtiny2313 running at 
-*	1MHz. Fast mode is probably possible, but would need a faster clock
-*	and has not been tested.
+* 1MHz. Fast mode is probably possible, but would need a faster clock
+* and has not been tested.
 *
 *	12/15/08	Added declaration of USI_TWI_Start_Memory_Read	-jkl
 ****************************************************************************/
@@ -42,7 +42,7 @@
 #define TWI_NACK_BIT  0       // Bit position for (N)ACK bit.
 
 // Note these have been renumbered from the Atmel Apps Note. Most likely errors are now
-//		lowest numbers so they're easily recognized as LED flashes.
+//      lowest numbers so they're easily recognized as LED flashes.
 #define USI_TWI_NO_DATA             0x08  // Transmission buffer is empty
 #define USI_TWI_DATA_OUT_OF_BOUND   0x09  // Transmission buffer is outside SRAM space
 #define USI_TWI_UE_START_CON        0x07  // Unexpected Start Condition
