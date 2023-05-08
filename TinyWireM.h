@@ -5,26 +5,24 @@
   Thanks to 'jkl' for the gcc version of Atmel's USI_TWI_Master code
   http://www.cs.cmu.edu/~dst/ARTSI/Create/PC%20Comm/
   I added Atmel's original Device dependant defines section back into USI_TWI_Master.h
- 
- 
- NOTE! - It's very important to use pullups on the SDA & SCL lines! More so than with the Wire lib.
- 
- USAGE is modeled after the standard Wire library . . .
-  Put in setup():
-	TinyWireM.begin(){                               // initialize I2C lib
-  To Send:
-	TinyWireM.beginTransmission(uint8_t slaveAddr){  // setup slave's address (7 bit address - same as Wire)
-	TinyWireM.send(uint8_t data){                    // buffer up bytes to send - can be called multiple times
-	someByte = TinyWireM.endTransmission(){          // actually send the bytes in the buffer
-	                                                 // returns (optional) 0 = sucess or see USI_TWI_Master.h for error codes
-  To Receive:
-	someByte = TinyWireM.requestFrom(uint8_t slaveAddr, uint8_t numBytes){      // reads 'numBytes' from slave's address
-	                                                 // (usage optional) returns 0= success or see USI_TWI_Master.h for error codes
-	someByte = TinyWireM.receive(){                  // returns the next byte in the received buffer - called multiple times
-	someByte = TinyWireM.available(){                // returns the number of unread bytes in the received buffer
 
-	TODO:	(by others!)
-	- merge this class with TinyWireS for master & slave support in one library
+
+ NOTE! - It's very important to use pullups on the SDA & SCL lines! More so than with the Wire lib.
+
+ USAGE
+  Put in setup():
+	 USI_TWI_Master_Initialise()            // initialize I2C lib
+
+  To Send:
+	 TinyWireM.initFor(address)             // prepare to send to a slave (7 bit address - same as Wire)
+	 TinyWireM.queueNext(data)              // buffer up bytes to send - can be called multiple times and/or with multiple bytes
+	 rc = TinyWireM.send()                  // actually send the bytes in the buffer
+	                                        // returns 0 on sucess or see USI_TWI_Master.h for error codes
+  To Receive:
+	 rc = TinyWireM.requestFrom(address, numBytes)   // reads 'numBytes' from slave address
+	                                        // returns 0 on success or see USI_TWI_Master.h for error codes
+	 someByte = TinyWireM.receive()         // returns the next byte in the received buffer - called multiple times
+	 rc = TinyWireM.available()             // returns the number of unread bytes in the received buffer
 
 	This library is free software; you can redistribute it and/or modify it under the
   terms of the GNU General Public License as published by the Free Software
@@ -41,67 +39,25 @@
 #include <inttypes.h>
 #include <string.h> // memcpy hides in there
 
-#define USI_SEND         0              // indicates sending to TWI
-#define USI_RCVE         1              // indicates receiving from TWI
-#define USI_BUF_SIZE    20              // bytes in message buffer
+enum TwiDirection { USI_SEND = 0, USI_RCVE = 1 };
 
-class TinyWireMaster {
-  private:
-	  uint8_t itsBuf[USI_BUF_SIZE]; // holds I2C send and receive data
-	  uint8_t itsBufIdx;          // current number of bytes in the send buff
-	  uint8_t itsLastRead;        // number of bytes read so far
-	  uint8_t itsBytesAvail;      // number of bytes requested but not read
-	
+class TinyWireM {
   public:
- 	  TinyWireMaster() : itsBufIdx(0), itsLastRead(0), itsBytesAvail(0) {}
-     
-	  void initialise() {
-      USI_TWI_Master_Initialise();          
-	  }
-   
-    void prepareTransmission(uint8_t address) {
-      itsBufIdx = 0; 
-      itsBuf[itsBufIdx] = (address << TWI_ADR_BITS) | USI_SEND; 
-    }
-    
-    void queueForTransmission(uint8_t data) {
-      if (itsBufIdx + 1 > USI_BUF_SIZE) return;         // dont blow out the buffer
-      itsBufIdx += 1;
-      itsBuf[itsBufIdx] = data;
-    }
-    
-    template <uint8_t N>
-    void queueForTransmission(uint8_t data[N]) {
-      if (itsBufIdx + N > USI_BUF_SIZE) return;         // dont blow out the buffer
-      memcpy(itsBuf + itsBufIdx + 1, data, N);
-      itsBufIdx += N;
-    }
-    
-    uint8_t performTransmission() {
-      bool xferOK = USI_TWI_Start_Read_Write(itsBuf, itsBufIdx+1);
-      itsBufIdx = 0;
-      return xferOK ? 0 : USI_TWI_Get_State_Info();
+    // First byte of buffer to be sent.
+    static uint8_t prefix_to_send(uint8_t address) {
+      return (address << TWI_ADR_BITS) | USI_SEND;
     }
 
-    // Set up for receiving from slave.
-    uint8_t requestFrom(uint8_t slaveAddr, uint8_t numBytes) {
-      itsLastRead = 0;
-      itsBytesAvail = numBytes;
-      numBytes++;                // add extra byte to transmit header
-      itsBuf[0] = (slaveAddr<<TWI_ADR_BITS) | USI_RCVE;   // setup address & Rcve bit
-      bool xferOK = USI_TWI_Start_Read_Write(itsBuf, numBytes); // core func that does the work
-      // USI_Buf now holds the data read
-      return xferOK ? 0 : USI_TWI_Get_State_Info();
+    // First byte of buffer to be received.
+    static uint8_t prefix_to_receive(uint8_t address) {
+      return (address << TWI_ADR_BITS) | USI_RCVE;
     }
 
-    // Returns the bytes received one at a time.
-    uint8_t receive() {
-      itsLastRead++;     // inc first since first uint8_t read is in itsBuf[1]
-      return itsBuf[itsLastRead];
-}
-    // Number of bytes available that haven't been read yet
-    uint8_t available() const {
-      return itsBytesAvail - itsLastRead; 
+    // Sends off or receives buffer, depending on how the first byte.
+    // Returns 0 on success or error code.
+    static uint8_t transmit(uint8_t buf[], uint8_t len) {
+      bool xferOK = USI_TWI_Start_Read_Write(buf, len);
+      return xferOK ? 0 : USI_TWI_Get_State_Info();
     }
 };
 
