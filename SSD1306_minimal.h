@@ -30,10 +30,6 @@
 #include <Arduino.h>
 
 
-// defines taken from GOFi2cOLED
-#define GOFi2cOLED_Command_Mode		      0x80
-#define GOFi2cOLED_Data_Mode		      0x40
-
 //Fundamental Command (more than one bytes command)
 #define Set_Contrast_Cmd                      0x81     //Double byte command to select 1 out of 256 contrast steps.Default(RESET = 0x7F)
 #define Entire_Display_On_Resume_Cmd          0xA4     //Resume to RAM content display(RESET), Output follows RAM content
@@ -95,7 +91,7 @@ template <uint8_t ADDRESS>
 class SSD1306_Mini {
   private:
     static void sendCommand(uint8_t command) {
-      uint8_t buf[] = { prefix_to_send(), GOFi2cOLED_Command_Mode, command };
+      uint8_t buf[] = { prefix_to_send(), 0x80, command };
       TinyWireM::transmit(buf, sizeof buf);
     }
 
@@ -155,7 +151,7 @@ class SSD1306_Mini {
     
     // First byte of a buffer with data to be sent.
     static uint8_t prefix_to_send_data() {
-      return GOFi2cOLED_Data_Mode;
+      return 0x40 | 0x0; // Set Display Start Line to 0
     }
     
     // Sends off buffer and returns 0 on success or error code.
@@ -169,8 +165,8 @@ class SSD1306_Mini {
 
     static void clear() {
       startScreenUpload();
-      uint8_t buf[2 + 16] = { prefix_to_send(), prefix_to_send_data() };
-      for (uint16_t i = 0; i < 128*64/8/16; ++i) {
+      uint8_t buf[2 + 64] = { prefix_to_send(), prefix_to_send_data() };
+      for (uint16_t i = 0; i < 128*64/8/64; ++i) {
         TinyWireM::transmit(buf, sizeof buf);
       }
     }

@@ -16,22 +16,13 @@ uint8_t const RowCount = 16;
 
 typedef SSD1306_Mini<0x3C> OLED;
 
-// there are different wall types
-uint8_t const wall[5][4] = {
-  0x0, 0x0, 0x0, 0x0,
-  0xf, 0xf, 0xf, 0xf,
-  0xf, 0x9, 0x9, 0xf,
-  0x9, 0x9, 0x9, 0x9,
-  0x9, 0x6, 0x6, 0x9,
-};
-
 // the ball shape
-uint8_t const ball[4] = { 0x6, 0x9, 0x9, 0x6 };
+static uint8_t const ball[4] = { 0x6, 0x9, 0x9, 0x6 };
 
-static uint8_t snakeRow = 10;
-static uint8_t snakeCol = 7;
-static char snakeRowDir = +1;
-static char snakeColDir = -1;
+static uint8_t ballRow = 10;
+static uint8_t ballCol = 7;
+static int8_t ballRowDir = +1;
+static int8_t ballColDir = -1;
 
 // this is the room shape
 const static uint8_t room[] PROGMEM = {
@@ -58,22 +49,20 @@ uint8_t getRoom(uint8_t row, uint8_t col) {
   return pgm_read_byte(&room[row*ColCount + col]);
 }
 
-bool getSnake(uint8_t row, uint8_t col) {
-  return row == snakeRow && col == snakeCol;
+bool isBall(uint8_t row, uint8_t col) {
+  return row == ballRow && col == ballCol;
 }
 
 
 void displayRoom() {
   OLED::startScreenUpload();
   uint8_t buf[2 + 4] = { OLED::prefix_to_send(), OLED::prefix_to_send_data() };
-
-  for (char r = 0; r < RowCount; r += 2) {
-    for (char c = 0; c < ColCount; c += 1){
+  for (int8_t r = 0; r < RowCount; r += 2) {
+    for (int8_t c = 0; c < ColCount; c += 1) {
       uint8_t upperRow = getRoom(r, c);
       uint8_t lowerRow = getRoom(r+1, c);
-
-      bool upperSnake = getSnake(r, c);
-      bool lowerSnake = getSnake(r+1, c);
+      bool upperBall = isBall(r, c);
+      bool lowerBall = isBall(r+1, c);
 
       buf[2+0] = 0;
       buf[2+1] = 0;
@@ -82,26 +71,26 @@ void displayRoom() {
 
       // room
       if (upperRow) {
-        buf[2+0] |= wall[upperRow][0] << 0;
-        buf[2+1] |= wall[upperRow][1] << 0;
-        buf[2+2] |= wall[upperRow][2] << 0;
-        buf[2+3] |= wall[upperRow][3] << 0;
+        buf[2+0] |= 0xF << 0;
+        buf[2+1] |= 0xF << 0;
+        buf[2+2] |= 0xF << 0;
+        buf[2+3] |= 0xF << 0;
       }
       if (lowerRow) {
-        buf[2+0] |= wall[lowerRow][0] << 4;
-        buf[2+1] |= wall[lowerRow][1] << 4;
-        buf[2+2] |= wall[lowerRow][2] << 4;
-        buf[2+3] |= wall[lowerRow][3] << 4;
+        buf[2+0] |= 0xF << 4;
+        buf[2+1] |= 0xF << 4;
+        buf[2+2] |= 0xF << 4;
+        buf[2+3] |= 0xF << 4;
       }
 
-      // snake
-      if (upperSnake) {
+      // ball
+      if (upperBall) {
         buf[2+0] |= ball[0] << 0;
         buf[2+1] |= ball[1] << 0;
         buf[2+2] |= ball[2] << 0;
         buf[2+3] |= ball[3] << 0;
       }
-      if (lowerSnake) {
+      if (lowerBall) {
         buf[2+0] |= ball[0] << 4;
         buf[2+1] |= ball[1] << 4;
         buf[2+2] |= ball[2] << 4;
@@ -113,28 +102,27 @@ void displayRoom() {
   }
 }
 
-void move(){
+void move() {
   uint8_t rowHitType;
   uint8_t colHitType;
   do {
-    rowHitType = getRoom(snakeRow + snakeRowDir, snakeCol);
-    colHitType = getRoom(snakeRow, snakeCol + snakeColDir);
+    rowHitType = getRoom(ballRow + ballRowDir, ballCol);
+    colHitType = getRoom(ballRow, ballCol + ballColDir);
     if (rowHitType) {
-      snakeRowDir = -snakeRowDir;
+      ballRowDir = -ballRowDir;
     }
     if (colHitType) {
-      snakeColDir = -snakeColDir;
+      ballColDir = -ballColDir;
     }
   } while (rowHitType || colHitType);
 
-  snakeRow = snakeRow + snakeRowDir;
-  snakeCol = snakeCol + snakeColDir;
+  ballRow = ballRow + ballRowDir;
+  ballCol = ballCol + ballColDir;
 }
 
 
 void setup() {
   OLED::init();
-  OLED::clear();
 }
 
 void loop() {
