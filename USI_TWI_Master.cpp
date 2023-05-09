@@ -20,16 +20,15 @@
 *			length should be these two bytes plus the number of bytes to read.
 ****************************************************************************/
 #include <avr/interrupt.h>
-#define F_CPU 1000000UL	      // Sets up the default speed for delay.h
+//#define F_CPU 1000000UL	      // Sets up the default speed for delay.h
 //#define F_CPU 8000000UL	      // Sets up the default speed for delay.h
 
-#include <util/delay.h>
-#include <avr/io.h>
+//#include <util/delay.h>
 #include "USI_TWI_Master.h"
 
-// For use with _delay_us()
-#define T2_TWI    5     // >4,7us
-#define T4_TWI    4     // >4,0us
+// For use with delayMicroseconds()
+//#define T2_TWI    5     // >4,7us
+//#define T4_TWI    4     // >4,0us
 
 static unsigned char USI_TWI_Master_Transfer(unsigned char);
 static unsigned char USI_TWI_Master_Stop();
@@ -147,14 +146,14 @@ unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
            (1<<USICS1)|(0<<USICS0)|(1<<USICLK)|     // Software clock strobe as source.
            (1<<USITC);                              // Toggle Clock Port.
   do {
-    _delay_us(T2_TWI);
+    //delayMicroseconds(T2_TWI);
     USICR = temp;                           // Generate positve SCL edge.
-    while( !(PIN_USI & (1<<PIN_USI_SCL)) ); // Wait for SCL to go high.
-    _delay_us(T4_TWI);
+    while (!(PIN_USI & (1<<PIN_USI_SCL)));  // Wait for SCL to go high.
+    //delayMicroseconds(T4_TWI);
     USICR = temp;                           // Generate negative SCL edge.
   } while(!(USISR & (1<<USIOIF)));          // Check for transfer complete.
 
-  _delay_us(T2_TWI);
+  //delayMicroseconds(T2_TWI);
   temp  = USIDR;                           // Read out data.
   USIDR = 0xFF;                            // Release SDA.
   DDR_USI |= (1<<PIN_USI_SDA);             // Enable SDA as output.
@@ -168,11 +167,11 @@ unsigned char USI_TWI_Master_Start() {
 /* Release SCL to ensure that (repeated) Start can be performed */
   PORT_USI |= (1<<PIN_USI_SCL);                     // Release SCL.
   while( !(PORT_USI & (1<<PIN_USI_SCL)) );          // Verify that SCL becomes high.
-  _delay_us(T2_TWI);
+  //delayMicroseconds(T2_TWI);
 
 /* Generate Start Condition */
   PORT_USI &= ~(1<<PIN_USI_SDA);                    // Force SDA LOW.
-  _delay_us(T4_TWI);
+  //delayMicroseconds(T4_TWI);
   PORT_USI &= ~(1<<PIN_USI_SCL);                    // Pull SCL LOW.
   PORT_USI |= (1<<PIN_USI_SDA);                     // Release SDA.
 
@@ -188,9 +187,9 @@ unsigned char USI_TWI_Master_Stop() {
   PORT_USI &= ~(1<<PIN_USI_SDA);           // Pull SDA low.
   PORT_USI |= (1<<PIN_USI_SCL);            // Release SCL.
   while( !(PIN_USI & (1<<PIN_USI_SCL)) );  // Wait for SCL to go high.
-  _delay_us(T4_TWI);
+  //delayMicroseconds(T4_TWI);
   PORT_USI |= (1<<PIN_USI_SDA);            // Release SDA.
-  _delay_us(T2_TWI);
+  //delayMicroseconds(T2_TWI);
 
   if (!(USISR & (1<<USIPF)))
     return USI_TWI_MISSING_STOP_CON;
