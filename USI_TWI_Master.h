@@ -25,14 +25,9 @@
 #define SYS_CLK   1000.0  // [kHz]	Default for ATtiny2313
 //#define SYS_CLK   8000.0
 
-// For use with _delay_us()
-#define T2_TWI    5 		// >4,7us
-#define T4_TWI    4 		// >4,0us
-
 // Defines error code generating
 #define PARAM_VERIFICATION
 //#define NOISE_TESTING
-#define SIGNAL_VERIFY		// This should probably be on always.
 
 /****************************************************************************
   Bit and byte definitions
@@ -106,7 +101,5 @@
 
 //********** Prototypes **********//
 
-void              USI_TWI_Master_Initialise( void );
-unsigned char USI_TWI_Start_Random_Read( unsigned char * , unsigned char );
-unsigned char USI_TWI_Start_Read_Write( unsigned char * , unsigned char );
-unsigned char USI_TWI_Get_State_Info( void );
+void          USI_TWI_Master_Initialise();
+unsigned char USI_TWI_Start_Read_Write(unsigned char *, unsigned char);

@@ -37,7 +37,6 @@
 
 #include "USI_TWI_Master.h"
 #include <inttypes.h>
-#include <string.h> // memcpy hides in there
 
 enum TwiDirection { USI_SEND = 0, USI_RCVE = 1 };
 
@@ -56,8 +55,7 @@ class TinyWireM {
     // Sends off or receives buffer, depending on how the first byte.
     // Returns 0 on success or error code.
     static uint8_t transmit(uint8_t buf[], uint8_t len) {
-      bool xferOK = USI_TWI_Start_Read_Write(buf, len);
-      return xferOK ? 0 : USI_TWI_Get_State_Info();
+      return USI_TWI_Start_Read_Write(buf, len);
     }
 };
 
