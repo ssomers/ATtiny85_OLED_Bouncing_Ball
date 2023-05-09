@@ -30,7 +30,7 @@
 #define T4_TWI    4 		// >4,0us
 
 // Defines error code generating
-//#define PARAM_VERIFICATION
+#define PARAM_VERIFICATION
 //#define NOISE_TESTING
 #define SIGNAL_VERIFY		// This should probably be on always.
 

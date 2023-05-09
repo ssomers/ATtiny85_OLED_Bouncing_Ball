@@ -72,7 +72,7 @@
 #define No_Operation_Cmd                      0xE3
 
 #define Charge_Pump_Setting_Cmd      	      0x8D
-#define Charge_Pump_Enable_Cmd	              0x14
+#define Charge_Pump_Setting_Enable_Cmd	              0x14
 #define Charge_Pump_Disable_Cmd               0x10     //default
 
 #define Scroll_Left			      0x00
@@ -89,59 +89,19 @@
 
 template <uint8_t ADDRESS>
 class SSD1306_Mini {
-  private:
-    static void sendCommand(uint8_t command) {
-      uint8_t buf[] = { prefix_to_send(), 0x80, command };
-      TinyWireM::transmit(buf, sizeof buf);
-    }
-
   public:
     static void init() {
       USI_TWI_Master_Initialise();
       delay(5);  //wait for OLED hardware init
-
-      sendCommand(GOFi2cOLED_Display_Off_Cmd);
-
-      sendCommand(Set_Multiplex_Ratio_Cmd);
-      sendCommand(0x3F);    /*duty = 1/64*/
-
-      sendCommand(Set_Display_Offset_Cmd);
-      sendCommand(0x00);
-
-      sendCommand(0xB0);  //set page address
-
-      sendCommand(Set_Memory_Addressing_Mode_Cmd);
-      sendCommand(HORIZONTAL_MODE);
-
-      sendCommand(0x40);    /*set display starconstructort line*/
-
-      sendCommand(Set_Contrast_Cmd);
-      sendCommand(0xcf);
-
-      sendCommand(Segment_Remap_Cmd);
-
-      sendCommand(COM_Output_Remap_Scan_Cmd);
-
-      sendCommand(GOFi2cOLED_Normal_Display_Cmd);
-
-      sendCommand(Set_Display_Clock_Divide_Ratio_Cmd);
-      sendCommand(0x80);
-
-      sendCommand(Set_Precharge_Period_Cmd);
-      sendCommand(0xf1);
-
-      sendCommand(Set_COM_Pins_Hardware_Config_Cmd);
-      sendCommand(0x12);
-
-      sendCommand(Set_VCOMH_Deselect_Level_Cmd);
-      sendCommand(0x30);
-
-      sendCommand(Deactivate_Scroll_Cmd);
-
-      sendCommand(Charge_Pump_Setting_Cmd);
-      sendCommand(Charge_Pump_Enable_Cmd);
-
-      sendCommand(GOFi2cOLED_Display_On_Cmd);
+      uint8_t buf[] = {
+        prefix_to_send(),
+        0x80, Set_Memory_Addressing_Mode_Cmd,
+        0x80, HORIZONTAL_MODE,
+        0x80, Charge_Pump_Setting_Cmd,
+        0x80, Charge_Pump_Setting_Enable_Cmd,
+        0x80, GOFi2cOLED_Display_On_Cmd,
+      };
+      TinyWireM::transmit(buf, sizeof buf);
     }
 
     // First byte of a buffer to be sent.
@@ -151,7 +111,7 @@ class SSD1306_Mini {
     
     // First byte of a buffer with data to be sent.
     static uint8_t prefix_to_send_data() {
-      return 0x40 | 0x0; // Set Display Start Line to 0
+      return 0x40; // Set Display Start Line to 0
     }
     
     // Sends off buffer and returns 0 on success or error code.
@@ -159,24 +119,21 @@ class SSD1306_Mini {
       return TinyWireM::transmit(buf, len);
     }
 
-    static void startScreenUpload() {
-      sendCommand(0x40 | 0x0); // line #0
-    }
-
     static void clear() {
-      startScreenUpload();
       uint8_t buf[2 + 64] = { prefix_to_send(), prefix_to_send_data() };
       for (uint16_t i = 0; i < 128*64/8/64; ++i) {
         TinyWireM::transmit(buf, sizeof buf);
       }
     }
 
+    /*
     static void cursorTo(uint8_t row, uint8_t col) {
       sendCommand(0x00 | (0x0F & col) );  // low col = 0
       sendCommand(0x10 | (0x0F & (col>>4)) );  // hi col = 0
       //  sendCommand(0x40 | (0x0F & row) ); // line #0
       sendCommand(0xb0 | (0x03 & row) );  // hi col = 0
     }
+    */
 };
 
 #endif

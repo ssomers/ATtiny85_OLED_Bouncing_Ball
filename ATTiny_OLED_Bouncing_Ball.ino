@@ -55,12 +55,11 @@ bool isBall(uint8_t row, uint8_t col) {
 
 
 void displayRoom() {
-  OLED::startScreenUpload();
   uint8_t buf[2 + 4] = { OLED::prefix_to_send(), OLED::prefix_to_send_data() };
   for (int8_t r = 0; r < RowCount; r += 2) {
     for (int8_t c = 0; c < ColCount; c += 1) {
-      uint8_t upperRow = getRoom(r, c);
-      uint8_t lowerRow = getRoom(r+1, c);
+      uint8_t upperRoom = getRoom(r, c);
+      uint8_t lowerRoom = getRoom(r+1, c);
       bool upperBall = isBall(r, c);
       bool lowerBall = isBall(r+1, c);
 
@@ -70,17 +69,17 @@ void displayRoom() {
       buf[2+3] = 0;
 
       // room
-      if (upperRow) {
+      if (upperRoom) {
         buf[2+0] |= 0xF << 0;
-        buf[2+1] |= 0xF << 0;
-        buf[2+2] |= 0xF << 0;
-        buf[2+3] |= 0xF << 0;
+        buf[2+1] |= 0x8 << 0;
+        buf[2+2] |= 0x4 << 0;
+        buf[2+3] |= 0x2 << 0;
       }
-      if (lowerRow) {
+      if (lowerRoom) {
         buf[2+0] |= 0xF << 4;
-        buf[2+1] |= 0xF << 4;
-        buf[2+2] |= 0xF << 4;
-        buf[2+3] |= 0xF << 4;
+        buf[2+1] |= 0x1 << 4;
+        buf[2+2] |= 0x4 << 4;
+        buf[2+3] |= 0x1 << 4;
       }
 
       // ball
