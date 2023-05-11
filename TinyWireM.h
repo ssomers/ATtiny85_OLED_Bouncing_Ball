@@ -42,14 +42,18 @@ enum TwiDirection { USI_SEND = 0, USI_RCVE = 1 };
 
 class TinyWireM {
   public:
+    static uint8_t prefix(uint8_t address, TwiDirection direction) {
+      return (address << TWI_ADR_BITS) | direction;
+    }
+
     // First byte of buffer to be sent.
     static uint8_t prefix_to_send(uint8_t address) {
-      return (address << TWI_ADR_BITS) | USI_SEND;
+      return prefix(address, USI_SEND);
     }
 
     // First byte of buffer to be received.
     static uint8_t prefix_to_receive(uint8_t address) {
-      return (address << TWI_ADR_BITS) | USI_RCVE;
+      return prefix(address, USI_RCVE);
     }
 
     // Sends off or receives buffer, depending on how the first byte.

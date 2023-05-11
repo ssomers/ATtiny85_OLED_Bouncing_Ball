@@ -10,29 +10,20 @@
 *
 *		Extensively modified to provide complete I2C driver.
 *
-*Notes:
-*		- T4_TWI and T2_TWI delays are modified to work with 1MHz default clock
-*			and now use hard code values. They would need to change
-*			for other clock rates. Refer to the Apps Note.
-*
-*	12/17/08	Added USI_TWI_Start_Memory_Read Routine		-jkl
-*		Note msg buffer will have slave adrs ( with write bit set) and memory adrs;
-*			length should be these two bytes plus the number of bytes to read.
 ****************************************************************************/
 #include <avr/interrupt.h>
-//#define F_CPU 1000000UL	      // Sets up the default speed for delay.h
-//#define F_CPU 8000000UL	      // Sets up the default speed for delay.h
-
-//#include <util/delay.h>
 #include "USI_TWI_Master.h"
 
-// For use with delayMicroseconds()
-//#define T2_TWI    5     // >4,7us
-//#define T4_TWI    4     // >4,0us
+/****************************************************************************
+  Bit and byte definitions
+****************************************************************************/
+#define TWI_READ_BIT  0       // Bit position for R/W bit in "address byte".
+#define TWI_NACK_BIT  0       // Bit position for (N)ACK bit.
 
-static unsigned char USI_TWI_Master_Transfer(unsigned char);
-static unsigned char USI_TWI_Master_Stop();
-static unsigned char USI_TWI_Master_Start();
+
+static uint8_t USI_TWI_Master_Transfer(uint8_t);
+static uint8_t USI_TWI_Master_Stop();
+static uint8_t USI_TWI_Master_Start();
 
 /*---------------------------------------------------------------
  USI TWI single master initialization function
@@ -66,13 +57,13 @@ void USI_TWI_Master_Initialise() {
  Success or error code is returned. Error codes are defined in
  USI_TWI_Master.h
 ---------------------------------------------------------------*/
-unsigned char USI_TWI_Start_Read_Write(unsigned char * const in_msg, unsigned char const in_msgSize) {
-  unsigned char const tempUSISR_8bit = (1<<USISIF)|(1<<USIOIF)|(1<<USIPF)|(1<<USIDC)|      // Prepare register value to: Clear flags, and
+uint8_t USI_TWI_Start_Read_Write(uint8_t * const in_msg, uint8_t const in_msgSize) {
+  uint8_t const tempUSISR_8bit = (1<<USISIF)|(1<<USIOIF)|(1<<USIPF)|(1<<USIDC)|      // Prepare register value to: Clear flags, and
                                  (0x0<<USICNT0);                                     // set USI to shift 8 bits i.e. count 16 clock edges.
-  unsigned char const tempUSISR_1bit = (1<<USISIF)|(1<<USIOIF)|(1<<USIPF)|(1<<USIDC)|      // Prepare register value to: Clear flags, and
+  uint8_t const tempUSISR_1bit = (1<<USISIF)|(1<<USIOIF)|(1<<USIPF)|(1<<USIDC)|      // Prepare register value to: Clear flags, and
                                  (0xE<<USICNT0); 									// set USI to shift 1 bit i.e. count 2 clock edges.
 #ifdef PARAM_VERIFICATION
-  if (in_msg > (unsigned char*)RAMEND)                 // Test if address is outside SRAM space
+  if (in_msg > (uint8_t*)RAMEND)                 // Test if address is outside SRAM space
     return USI_TWI_DATA_OUT_OF_BOUND;
   if (in_msgSize <= 1)                                 // Test if the transmission buffer is empty
     return USI_TWI_NO_DATA;
@@ -87,12 +78,12 @@ unsigned char USI_TWI_Start_Read_Write(unsigned char * const in_msg, unsigned ch
     return USI_TWI_UE_DATA_COL;
 #endif
 
-  unsigned char *msg = in_msg;
-  unsigned char msgSize = in_msgSize;
-  unsigned char addressMode         = true;   // Always true for first byte
-  unsigned char masterWriteDataMode = !(*msg & (1<<TWI_READ_BIT)); // The LSB in the address byte determines if is a masterRead or masterWrite operation.
+  uint8_t *msg = in_msg;
+  uint8_t msgSize = in_msgSize;
+  uint8_t addressMode         = true;   // Always true for first byte
+  uint8_t masterWriteDataMode = !(*msg & (1<<TWI_READ_BIT)); // The LSB in the address byte determines if is a masterRead or masterWrite operation.
 
-  unsigned char rc = USI_TWI_Master_Start();
+  uint8_t rc = USI_TWI_Master_Start();
   if (rc)
     return rc;
 
@@ -138,42 +129,42 @@ unsigned char USI_TWI_Start_Read_Write(unsigned char * const in_msg, unsigned ch
  Data to be sent has to be placed into the USIDR prior to calling
  this function. Data read, will be return'ed from the function.
 ---------------------------------------------------------------*/
-unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
-  USISR = temp;                                     // Set USISR according to temp.
-                                                    // Prepare clocking.
-  temp  =  (0<<USISIE)|(0<<USIOIE)|                 // Interrupts disabled
-           (1<<USIWM1)|(0<<USIWM0)|                 // Set USI in Two-wire mode.
-           (1<<USICS1)|(0<<USICS0)|(1<<USICLK)|     // Software clock strobe as source.
-           (1<<USITC);                              // Toggle Clock Port.
+uint8_t USI_TWI_Master_Transfer(uint8_t tempUSISR) {
+  USISR = tempUSISR;
+  // Prepare clocking.
+  tempUSISR  = (0<<USISIE)|(0<<USIOIE)|                 // Interrupts disabled
+               (1<<USIWM1)|(0<<USIWM0)|                 // Set USI in Two-wire mode.
+               (1<<USICS1)|(0<<USICS0)|(1<<USICLK)|     // Software clock strobe as source.
+               (1<<USITC);                              // Toggle Clock Port.
   do {
     //delayMicroseconds(T2_TWI);
-    USICR = temp;                           // Generate positve SCL edge.
+    USICR = tempUSISR;                      // Generate positve SCL edge.
     while (!(PIN_USI & (1<<PIN_USI_SCL)));  // Wait for SCL to go high.
     //delayMicroseconds(T4_TWI);
-    USICR = temp;                           // Generate negative SCL edge.
-  } while(!(USISR & (1<<USIOIF)));          // Check for transfer complete.
+    USICR = tempUSISR;                      // Generate negative SCL edge.
+  } while (!(USISR & (1<<USIOIF)));         // Check for transfer complete.
 
   //delayMicroseconds(T2_TWI);
-  temp  = USIDR;                           // Read out data.
-  USIDR = 0xFF;                            // Release SDA.
-  DDR_USI |= (1<<PIN_USI_SDA);             // Enable SDA as output.
+  tempUSISR  = USIDR;                       // Read out data.
+  USIDR = 0xFF;                             // Release SDA.
+  DDR_USI |= (1<<PIN_USI_SDA);              // Enable SDA as output.
 //pinMode(PIN_USI_SDA, OUTPUT);
-  return temp;                             // Return the data from the USIDR
+  return tempUSISR;                         // Return the data from the USIDR
 }
 /*---------------------------------------------------------------
  Function for generating a TWI Start Condition.
 ---------------------------------------------------------------*/
-unsigned char USI_TWI_Master_Start() {
+uint8_t USI_TWI_Master_Start() {
 /* Release SCL to ensure that (repeated) Start can be performed */
-  PORT_USI |= (1<<PIN_USI_SCL);                     // Release SCL.
-  while( !(PORT_USI & (1<<PIN_USI_SCL)) );          // Verify that SCL becomes high.
+  PORT_USI |= (1<<PIN_USI_SCL);             // Release SCL.
+  while (!(PORT_USI & (1<<PIN_USI_SCL)));   // Verify that SCL becomes high.
   //delayMicroseconds(T2_TWI);
 
 /* Generate Start Condition */
-  PORT_USI &= ~(1<<PIN_USI_SDA);                    // Force SDA LOW.
+  PORT_USI &= ~(1<<PIN_USI_SDA);            // Force SDA LOW.
   //delayMicroseconds(T4_TWI);
-  PORT_USI &= ~(1<<PIN_USI_SCL);                    // Pull SCL LOW.
-  PORT_USI |= (1<<PIN_USI_SDA);                     // Release SDA.
+  PORT_USI &= ~(1<<PIN_USI_SCL);            // Pull SCL LOW.
+  PORT_USI |= (1<<PIN_USI_SDA);             // Release SDA.
 
   if (!(USISR & (1<<USISIF)))
     return USI_TWI_MISSING_START_CON;
@@ -183,7 +174,7 @@ unsigned char USI_TWI_Master_Start() {
  Function for generating a TWI Stop Condition. Used to release
  the TWI bus.
 ---------------------------------------------------------------*/
-unsigned char USI_TWI_Master_Stop() {
+uint8_t USI_TWI_Master_Stop() {
   PORT_USI &= ~(1<<PIN_USI_SDA);           // Pull SDA low.
   PORT_USI |= (1<<PIN_USI_SCL);            // Release SCL.
   while( !(PIN_USI & (1<<PIN_USI_SCL)) );  // Wait for SCL to go high.
