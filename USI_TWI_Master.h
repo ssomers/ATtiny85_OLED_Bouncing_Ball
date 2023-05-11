@@ -19,6 +19,11 @@
   1 //!< Bit position for LSB of the slave address bits in the init byte.
 #define USI_TWI_NACK_BIT 0 //!< Bit position for (N)ACK bit.
 
+enum USI_TWI_Direction {
+  USI_TWI_SEND = 0,
+  USI_TWI_RCVE = 1,
+};
+
 // Note these have been renumbered from the Atmel Apps Note. Most likely errors
 // are now lowest numbers so they're easily recognized as LED flashes.
 enum USI_TWI_ErrorLevel {
@@ -94,6 +99,11 @@ enum USI_TWI_ErrorLevel {
 */
 
 //********** Prototypes **********//
+
+// First byte of a buffer to be passed to USI_TWI_Start_Read_Write.
+static unsigned char USI_TWI_Prefix(USI_TWI_Direction direction, unsigned char address) {
+  return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
+}
 
 void               USI_TWI_Master_Initialise();
 USI_TWI_ErrorLevel USI_TWI_Start_Read_Write(unsigned char * buffer, unsigned char length);

@@ -1,6 +1,5 @@
 
 #include "SSD1306_minimal.h"
-#include "TinyWireM.h"
 
 /*
     display 128x64

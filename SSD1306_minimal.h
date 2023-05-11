@@ -26,9 +26,8 @@
 #ifndef __SSD1306_MINIMAL_H__
 #define __SSD1306_MINIMAL_H__
 
-#include "TinyWireM.h"
+#include "USI_TWI_Master.h"
 #include <Arduino.h>
-
 
 //Fundamental Command (more than one bytes command)
 #define Set_Contrast_Cmd                      0x81     //Double byte command to select 1 out of 256 contrast steps.Default(RESET = 0x7F)
@@ -101,12 +100,12 @@ class SSD1306_Mini {
         0x80, Charge_Pump_Setting_Enable_Cmd,
         0x80, GOFi2cOLED_Display_On_Cmd,
       };
-      TinyWireM::transmit(buf, sizeof buf);
+      USI_TWI_Start_Read_Write(buf, sizeof buf);
     }
 
     // First byte of a buffer to be sent.
     static uint8_t prefix_to_send() {
-      return TinyWireM::prefix_to_send(ADDRESS);
+      return USI_TWI_Prefix(USI_TWI_SEND, ADDRESS);
     }
     
     // First byte of a buffer with data to be sent.
@@ -116,13 +115,13 @@ class SSD1306_Mini {
     
     // Sends off buffer and returns 0 on success or error code.
     static uint8_t send(uint8_t buf[], uint8_t len) {
-      return TinyWireM::transmit(buf, len);
+      return USI_TWI_Start_Read_Write(buf, len);
     }
 
     static void clear() {
       uint8_t buf[2 + 64] = { prefix_to_send(), prefix_to_send_data() };
       for (uint16_t i = 0; i < 128*64/8/64; ++i) {
-        TinyWireM::transmit(buf, sizeof buf);
+        USI_TWI_Start_Read_Write(buf, sizeof buf);
       }
     }
 
