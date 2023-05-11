@@ -38,22 +38,22 @@
 #include "USI_TWI_Master.h"
 #include <inttypes.h>
 
-enum TwiDirection { USI_SEND = 0, USI_RCVE = 1 };
+enum UsiTwiDirection { USI_TWI_SEND, USI_TWI_RCVE };
 
 class TinyWireM {
   public:
-    static uint8_t prefix(uint8_t address, TwiDirection direction) {
-      return (address << TWI_ADR_BITS) | direction;
+    static uint8_t prefix(uint8_t address, UsiTwiDirection direction) {
+      return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
     }
 
     // First byte of buffer to be sent.
     static uint8_t prefix_to_send(uint8_t address) {
-      return prefix(address, USI_SEND);
+      return prefix(address, USI_TWI_SEND);
     }
 
     // First byte of buffer to be received.
     static uint8_t prefix_to_receive(uint8_t address) {
-      return prefix(address, USI_RCVE);
+      return prefix(address, USI_TWI_RCVE);
     }
 
     // Sends off or receives buffer, depending on how the first byte.
