@@ -1,9 +1,9 @@
-
-#include "SSD1306_minimal.h"
+#include <inttypes.h>
+#include "SBC-OLED01.h"
 
 /*
     display 128x64
-    ball size 4x4
+    block size 4x4
 
     128 / 4 => 32 cols
      64 / 4 => 16 rows
@@ -13,7 +13,7 @@
 uint8_t const ColCount = 32;
 uint8_t const RowCount = 16;
 
-typedef SSD1306_Mini<0x3C> OLED;
+typedef SBS_OLED01<0x3C> OLED;
 
 // the ball shape
 static uint8_t const ball[4] = { 0x6, 0x9, 0x9, 0x6 };
@@ -44,16 +44,28 @@ const static uint8_t room[] PROGMEM = {
 };
 
 
-uint8_t getRoom(uint8_t row, uint8_t col) {
+static uint8_t getRoom(uint8_t row, uint8_t col) {
   return pgm_read_byte(&room[row*ColCount + col]);
 }
 
-bool isBall(uint8_t row, uint8_t col) {
+static bool isBall(uint8_t row, uint8_t col) {
   return row == ballRow && col == ballCol;
 }
 
+static void reportError(USI_TWI_ErrorLevel el) {
+  if (el) {
+    digitalWrite(LED_BUILTIN, LOW);
+    for (int f = 0; f < el; ++f) {
+      delay(150);
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(300);
+      digitalWrite(LED_BUILTIN, LOW);
+    }
+    delay(300);
+  }
+}
 
-void displayRoom() {
+static void displayRoom() {
   uint8_t buf[2 + 4] = { OLED::prefix_to_send(), OLED::prefix_to_send_data() };
   for (int8_t r = 0; r < RowCount; r += 2) {
     for (int8_t c = 0; c < ColCount; c += 1) {
@@ -95,12 +107,12 @@ void displayRoom() {
         buf[2+3] |= ball[3] << 4;
       }
 
-      OLED::send(buf, sizeof buf);
+      reportError(OLED::send(buf, sizeof buf));
     }
   }
 }
 
-void move() {
+static void move() {
   uint8_t rowHitType;
   uint8_t colHitType;
   do {
@@ -120,7 +132,11 @@ void move() {
 
 
 void setup() {
-  OLED::init();
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  reportError(OLED::init());
+  reportError(OLED::clear());
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {

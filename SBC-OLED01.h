@@ -1,33 +1,4 @@
-/*
-  SSD1306_minimal.h - SSD1306 OLED Driver Library
-  2015 Copyright (c) CoPiino Electronics All right reserved.
-
-  Original Author: GOF Electronics Co. Ltd.
-  Modified by: CoPiino Electronics
-
-  CoPiino Electronics invests time and resources providing this open source code,
-	please support CoPiino Electronics and open-source hardware by purchasing
-	products from CoPiino Electronics!
-
-  What is it?	
-    This library is derived from GOFi2cOLED library, only for SSD1306 in I2C Mode.
-    As the original library only supports Frame Buffered mode which requires to have
-    at least 1024bytes of free RAM for a 128x64px display it is too big for smaller devices.
-
-    So this a SSD1306 library that works great with ATTiny85 devices :)
-
-
-  It is a free software; you can redistribute it and/or modify it
-  under the terms of BSD license, check license.txt for more information.
-	All text above must be included in any redistribution.
-*/
-
-
-#ifndef __SSD1306_MINIMAL_H__
-#define __SSD1306_MINIMAL_H__
-
 #include "USI_TWI_Master.h"
-#include <Arduino.h>
 
 //Fundamental Command (more than one bytes command)
 #define Set_Contrast_Cmd                      0x81     //Double byte command to select 1 out of 256 contrast steps.Default(RESET = 0x7F)
@@ -87,11 +58,10 @@
 #define Scroll_256Frames		      0x3
 
 template <uint8_t ADDRESS>
-class SSD1306_Mini {
+class SBS_OLED01 {
   public:
-    static void init() {
+    static USI_TWI_ErrorLevel init() {
       USI_TWI_Master_Initialise();
-      delay(5);  //wait for OLED hardware init
       uint8_t buf[] = {
         prefix_to_send(),
         0x80, Set_Memory_Addressing_Mode_Cmd,
@@ -100,7 +70,7 @@ class SSD1306_Mini {
         0x80, Charge_Pump_Setting_Enable_Cmd,
         0x80, GOFi2cOLED_Display_On_Cmd,
       };
-      USI_TWI_Start_Read_Write(buf, sizeof buf);
+      return USI_TWI_Master_Transmit(buf, sizeof buf);
     }
 
     // First byte of a buffer to be sent.
@@ -114,15 +84,17 @@ class SSD1306_Mini {
     }
     
     // Sends off buffer and returns 0 on success or error code.
-    static uint8_t send(uint8_t buf[], uint8_t len) {
-      return USI_TWI_Start_Read_Write(buf, len);
+    static USI_TWI_ErrorLevel send(uint8_t buf[], uint8_t len) {
+      return USI_TWI_Master_Transmit(buf, len);
     }
 
-    static void clear() {
+    static USI_TWI_ErrorLevel clear() {
       uint8_t buf[2 + 64] = { prefix_to_send(), prefix_to_send_data() };
-      for (uint16_t i = 0; i < 128*64/8/64; ++i) {
-        USI_TWI_Start_Read_Write(buf, sizeof buf);
+      for (auto i = 0; i < 128*64/8/64; ++i) {
+        auto el = USI_TWI_Master_Transmit(buf, sizeof buf);
+        if (el) return el;
       }
+      return USI_TWI_OK;
     }
 
     /*
@@ -134,5 +106,3 @@ class SSD1306_Mini {
     }
     */
 };
-
-#endif

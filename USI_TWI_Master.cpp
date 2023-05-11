@@ -6,6 +6,8 @@
 ****************************************************************************/
 #include "USI_TWI_Master.h"
 #include <avr/interrupt.h>
+#include <avr/io.h>
+#include <util/delay.h>
 
 static unsigned char USI_TWI_Master_Transfer(unsigned char);
 static USI_TWI_ErrorLevel USI_TWI_Master_Start();
@@ -53,8 +55,8 @@ void USI_TWI_Master_Initialise() {
  * @param msg Pointer to the location of the msg buffer
  * @param msgSize How much data to send from the buffer
  */
-USI_TWI_ErrorLevel USI_TWI_Start_Read_Write(unsigned char * const in_msg,
-                                            unsigned char const in_msgSize) {
+USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char * const in_msg,
+                                           unsigned char const in_msgSize) {
   unsigned char const tempUSISR_8bit =
       (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
       (1 << USIDC) |    // Prepare register value to: Clear flags, and
@@ -79,8 +81,7 @@ USI_TWI_ErrorLevel USI_TWI_Start_Read_Write(unsigned char * const in_msg,
   unsigned char masterWriteDataMode = !(*msg & (1 << USI_TWI_READ_BIT));
 
   USI_TWI_ErrorLevel el = USI_TWI_Master_Start();
-  if (el)
-    return el;
+  if (el) return el;
 
   /*Write address and Read/Write data */
   do {
@@ -187,7 +188,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Stop() {
     ; // Wait for SCL to go high.
   //_delay_us(T4_TWI);
   PORT_USI |= (1 << PIN_USI_SDA); // Release SDA.
-  //_delay_us(T2_TWI);
+  _delay_us(T2_TWI);
 
   if (!(USISR & (1 << USIPF))) {
     return USI_TWI_MISSING_STOP_CON;

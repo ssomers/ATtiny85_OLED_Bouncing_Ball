@@ -1,13 +1,19 @@
 /*****************************************************************************
  * Based on https://github.com/adafruit/TinyWireM
  *
- * Delays have been removed since the only effect seems to be to… delay.
+ * Delays mostly removed since the only effect seems to be to… delay execution.
  *
  * Only tested to do I2C communication from an ATtiny85 running at 1, 8 or 16 MHz,
  * to an SSD1306.
  */
 
 //********** Defines **********//
+
+// Defines controlling timing limits - SCL <= 100KHz.
+
+// For use with _delay_us()
+#define T2_TWI 5 //!< >4,7us
+#define T4_TWI 4 //!< >4,0us
 
 //#define NOISE_TESTING
 
@@ -31,8 +37,8 @@ enum USI_TWI_ErrorLevel {
   USI_TWI_UE_START_CON = 0x07, //!< Unexpected Start Condition
   USI_TWI_UE_STOP_CON = 0x06,  //!< Unexpected Stop Condition
   USI_TWI_UE_DATA_COL = 0x05,  //!< Unexpected Data Collision (arbitration)
-  USI_TWI_NO_ACK_ON_DATA = 0x02, //!< The slave did not acknowledge  all data
-  USI_TWI_NO_ACK_ON_ADDRESS = 0x01, //!< The slave did not acknowledge  the address
+  USI_TWI_NO_ACK_ON_DATA = 0x02, //!< The slave did not acknowledge all data
+  USI_TWI_NO_ACK_ON_ADDRESS = 0x01, //!< The slave did not acknowledge the address
   USI_TWI_MISSING_START_CON = 0x03, //!< Generated Start Condition not detected on bus
   USI_TWI_MISSING_STOP_CON  = 0x04, //!< Generated Stop Condition not detected on bus
 };
@@ -101,9 +107,9 @@ enum USI_TWI_ErrorLevel {
 //********** Prototypes **********//
 
 // First byte of a buffer to be passed to USI_TWI_Start_Read_Write.
-static unsigned char USI_TWI_Prefix(USI_TWI_Direction direction, unsigned char address) {
+inline unsigned char USI_TWI_Prefix(USI_TWI_Direction direction, unsigned char address) {
   return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
 }
 
 void               USI_TWI_Master_Initialise();
-USI_TWI_ErrorLevel USI_TWI_Start_Read_Write(unsigned char * buffer, unsigned char length);
+USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char * buffer, unsigned char length);
