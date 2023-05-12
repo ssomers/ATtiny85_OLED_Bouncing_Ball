@@ -66,47 +66,53 @@ static void reportError(USI_TWI_ErrorLevel el) {
 }
 
 static void displayRoom() {
-  uint8_t buf[2 + 4] = { OLED::prefix_to_send(), OLED::prefix_to_send_data() };
+  constexpr uint8_t COLUMNS_PER_BLOCK = 2;
+  uint8_t buf[2 + 4 * COLUMNS_PER_BLOCK] = { OLED::first_byte_to_send(), OLED::PAYLOAD_DATA };
+
+  // Every row displayed over 4 pixels, display's page is 8 pixels high, so 2 rows at a time.
   for (int8_t r = 0; r < RowCount; r += 2) {
-    for (int8_t c = 0; c < ColCount; c += 1) {
-      uint8_t upperRoom = getRoom(r, c);
-      uint8_t lowerRoom = getRoom(r+1, c);
-      bool upperBall = isBall(r, c);
-      bool lowerBall = isBall(r+1, c);
-
-      buf[2+0] = 0;
-      buf[2+1] = 0;
-      buf[2+2] = 0;
-      buf[2+3] = 0;
-
-      // room
-      if (upperRoom) {
-        buf[2+0] |= 0xF << 0;
-        buf[2+1] |= 0x8 << 0;
-        buf[2+2] |= 0x4 << 0;
-        buf[2+3] |= 0x2 << 0;
+    for (int8_t block = 0; block < ColCount / COLUMNS_PER_BLOCK; block += 1) {
+      for (int8_t delta = 0; delta < COLUMNS_PER_BLOCK; delta += 1) {
+        uint8_t const c = block * COLUMNS_PER_BLOCK + delta;
+        uint8_t const upperRoom = getRoom(r, c);
+        uint8_t const lowerRoom = getRoom(r+1, c);
+        bool const upperBall = isBall(r, c);
+        bool const lowerBall = isBall(r+1, c);
+  
+        uint8_t* subbuf = &buf[2 + delta * 4]; // 2 fixed bytes and 4 per iteration
+        subbuf[0] = 0;
+        subbuf[1] = 0;
+        subbuf[2] = 0;
+        subbuf[3] = 0;
+  
+        // room
+        if (upperRoom) {
+          subbuf[0] |= 0xF << 0;
+          subbuf[1] |= 0xF << 0;
+          subbuf[2] |= 0xF << 0;
+          subbuf[3] |= 0xF << 0;
+        }
+        if (lowerRoom) {
+          subbuf[0] |= 0xF << 4;
+          subbuf[1] |= 0xF << 4;
+          subbuf[2] |= 0xF << 4;
+          subbuf[3] |= 0xF << 4;
+        }
+  
+        // ball
+        if (upperBall) {
+          subbuf[0] |= ball[0] << 0;
+          subbuf[1] |= ball[1] << 0;
+          subbuf[2] |= ball[2] << 0;
+          subbuf[3] |= ball[3] << 0;
+        }
+        if (lowerBall) {
+          buf[2+0] |= ball[0] << 4;
+          buf[2+1] |= ball[1] << 4;
+          buf[2+2] |= ball[2] << 4;
+          buf[2+3] |= ball[3] << 4;
+        }
       }
-      if (lowerRoom) {
-        buf[2+0] |= 0xF << 4;
-        buf[2+1] |= 0x1 << 4;
-        buf[2+2] |= 0x4 << 4;
-        buf[2+3] |= 0x1 << 4;
-      }
-
-      // ball
-      if (upperBall) {
-        buf[2+0] |= ball[0] << 0;
-        buf[2+1] |= ball[1] << 0;
-        buf[2+2] |= ball[2] << 0;
-        buf[2+3] |= ball[3] << 0;
-      }
-      if (lowerBall) {
-        buf[2+0] |= ball[0] << 4;
-        buf[2+1] |= ball[1] << 4;
-        buf[2+2] |= ball[2] << 4;
-        buf[2+3] |= ball[3] << 4;
-      }
-
       reportError(OLED::send(buf, sizeof buf));
     }
   }
@@ -137,10 +143,12 @@ void setup() {
   reportError(OLED::init());
   reportError(OLED::clear());
   digitalWrite(LED_BUILTIN, LOW);
+  displayRoom();
+  reportError(OLED::set_enabled());
 }
 
 void loop() {
-  displayRoom();
+  delay(100);
   move();
-  delay(50);
+  displayRoom();
 }
