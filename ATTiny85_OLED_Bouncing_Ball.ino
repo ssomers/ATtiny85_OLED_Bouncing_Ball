@@ -12,16 +12,14 @@ static uint8_t constexpr COLUMNS = OLED::WIDTH / SEGS_PER_COLUMN;
 static uint8_t constexpr ROWS = OLED::HEIGHT / COMS_PER_ROW;
 static uint8_t constexpr BYTES_PER_SEG = OLED::HEIGHT / 8; // 1 bpp, all bits used
 
-// the ball shape
-static uint8_t constexpr ball[SEGS_PER_COLUMN] = { 0x6, 0x9, 0x9, 0x6 }; // COM output per SEG
-
 static uint8_t ballRow = 10;
 static uint8_t ballCol = 7;
 static int8_t ballRowDir = +1;
 static int8_t ballColDir = -1;
 
-// this is the room shape
-const static constexpr uint8_t room[] PROGMEM = {
+static uint8_t constexpr ball_shape[SEGS_PER_COLUMN] = { 0x6, 0x9, 0x9, 0x6 }; // COM output per SEG
+
+const static constexpr uint8_t room_shape[ROWS * COLUMNS] PROGMEM = {
   1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1,
   1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
   1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
@@ -42,7 +40,7 @@ const static constexpr uint8_t room[] PROGMEM = {
 
 
 static uint8_t getWall(uint8_t row, uint8_t col) {
-  return pgm_read_byte(&room[row * COLUMNS + col]);
+  return pgm_read_byte(&room_shape[row * COLUMNS + col]);
 }
 
 static bool isBall(uint8_t row, uint8_t col) {
@@ -63,56 +61,55 @@ static void reportError(USI_TWI_ErrorLevel el) {
 }
 
 static void displayRoom() {
-  constexpr uint8_t COLUMNS_PER_BLOCK = 4;
-  uint8_t buf[2 + BYTES_PER_SEG * SEGS_PER_COLUMN * COLUMNS_PER_BLOCK] =
-    { OLED::first_byte_to_send(), OLED::PAYLOAD_DATA };
+  USI_TWI_Master m = OLED::master();
+  m.transmit(OLED::PAYLOAD_DATA);
 
-  for (int8_t block = 0; block < COLUMNS / COLUMNS_PER_BLOCK; block += 1) {
-    for (int8_t delta = 0; delta < COLUMNS_PER_BLOCK; delta += 1) {
-      uint8_t const c = block * COLUMNS_PER_BLOCK + delta;
-      for (int8_t r = 0; r < ROWS; r += 8 / COMS_PER_ROW) {
-        uint8_t const upperWall = getWall(r, c);
-        uint8_t const lowerWall = getWall(r+1, c);
-        bool const upperBall = isBall(r, c);
-        bool const lowerBall = isBall(r+1, c);
-  
-        uint8_t* subbuf = &buf[2 + delta * BYTES_PER_SEG * SEGS_PER_COLUMN + r / 2]; // 2 fixed bytes
-        subbuf[0 * BYTES_PER_SEG] = 0;
-        subbuf[1 * BYTES_PER_SEG] = 0;
-        subbuf[2 * BYTES_PER_SEG] = 0;
-        subbuf[3 * BYTES_PER_SEG] = 0;
-  
-        // room
-        if (upperWall) {
-          subbuf[0 * BYTES_PER_SEG] |= 0xF << 0;
-          subbuf[1 * BYTES_PER_SEG] |= 0xF << 0;
-          subbuf[2 * BYTES_PER_SEG] |= 0xF << 0;
-          subbuf[3 * BYTES_PER_SEG] |= 0xF << 0;
-        }
-        if (lowerWall) {
-          subbuf[0 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
-          subbuf[1 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
-          subbuf[2 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
-          subbuf[3 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
-        }
-  
-        // ball
-        if (upperBall) {
-          subbuf[0 * BYTES_PER_SEG] |= ball[0] << 0;
-          subbuf[1 * BYTES_PER_SEG] |= ball[1] << 0;
-          subbuf[2 * BYTES_PER_SEG] |= ball[2] << 0;
-          subbuf[3 * BYTES_PER_SEG] |= ball[3] << 0;
-        }
-        if (lowerBall) {
-          subbuf[0 * BYTES_PER_SEG] |= ball[0] << COMS_PER_ROW;
-          subbuf[1 * BYTES_PER_SEG] |= ball[1] << COMS_PER_ROW;
-          subbuf[2 * BYTES_PER_SEG] |= ball[2] << COMS_PER_ROW;
-          subbuf[3 * BYTES_PER_SEG] |= ball[3] << COMS_PER_ROW;
-        }
+  for (int8_t c = 0; c < COLUMNS; c += 1) {
+    uint8_t buf[BYTES_PER_SEG * SEGS_PER_COLUMN];
+    for (int8_t r = 0; r < ROWS; r += 8 / COMS_PER_ROW) {
+      uint8_t const upperWall = getWall(r, c);
+      uint8_t const lowerWall = getWall(r+1, c);
+      bool const upperBall = isBall(r, c);
+      bool const lowerBall = isBall(r+1, c);
+
+      uint8_t* subbuf = buf + r / 2;
+      subbuf[0 * BYTES_PER_SEG] = 0;
+      subbuf[1 * BYTES_PER_SEG] = 0;
+      subbuf[2 * BYTES_PER_SEG] = 0;
+      subbuf[3 * BYTES_PER_SEG] = 0;
+
+      // room
+      if (upperWall) {
+        subbuf[0 * BYTES_PER_SEG] |= 0xF << 0;
+        subbuf[1 * BYTES_PER_SEG] |= 0xF << 0;
+        subbuf[2 * BYTES_PER_SEG] |= 0xF << 0;
+        subbuf[3 * BYTES_PER_SEG] |= 0xF << 0;
+      }
+      if (lowerWall) {
+        subbuf[0 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
+        subbuf[1 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
+        subbuf[2 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
+        subbuf[3 * BYTES_PER_SEG] |= 0xF << COMS_PER_ROW;
+      }
+
+      // ball
+      if (upperBall) {
+        subbuf[0 * BYTES_PER_SEG] |= ball_shape[0] << 0;
+        subbuf[1 * BYTES_PER_SEG] |= ball_shape[1] << 0;
+        subbuf[2 * BYTES_PER_SEG] |= ball_shape[2] << 0;
+        subbuf[3 * BYTES_PER_SEG] |= ball_shape[3] << 0;
+      }
+      if (lowerBall) {
+        subbuf[0 * BYTES_PER_SEG] |= ball_shape[0] << COMS_PER_ROW;
+        subbuf[1 * BYTES_PER_SEG] |= ball_shape[1] << COMS_PER_ROW;
+        subbuf[2 * BYTES_PER_SEG] |= ball_shape[2] << COMS_PER_ROW;
+        subbuf[3 * BYTES_PER_SEG] |= ball_shape[3] << COMS_PER_ROW;
       }
     }
-    reportError(OLED::send(buf, sizeof buf));
+    
+    m.transmit(buf, sizeof buf);
   }
+  reportError(m.stop());
 }
 
 static void move() {
@@ -139,8 +136,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   reportError(OLED::init());
   digitalWrite(LED_BUILTIN, LOW);
-  displayRoom();
   reportError(OLED::set_enabled());
+  delay(500);
+  OLED::clear();
+  delay(1000);
+  displayRoom();
 }
 
 void loop() {

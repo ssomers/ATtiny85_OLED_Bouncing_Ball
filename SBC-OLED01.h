@@ -5,56 +5,45 @@ class SBS_OLED01 {
   public:
     static constexpr int HEIGHT = 64; // number of pixels high
     static constexpr int WIDTH = 128; // number of pixels wide
+    static constexpr int BYTES_PER_SEG = HEIGHT / 8; // 1 bpp, all bits used
     static constexpr uint8_t PAYLOAD_COMMAND_CONT = 0x80; // prefix to command to be continued by option or another command
     static constexpr uint8_t PAYLOAD_COMMAND_LAST = 0x00; // prefix to last option or command
     static constexpr uint8_t PAYLOAD_DATA = 0x40;         // anything 0b01xxxxxx
-    
+
+    static USI_TWI_Master master() {
+      return USI_TWI_Master(ADDRESS);
+    }
+
     static USI_TWI_ErrorLevel init() {
       USI_TWI_Master_Initialise();
-      uint8_t buf[] = {
-        first_byte_to_send(),
-        PAYLOAD_COMMAND_CONT, 0x20, // Set memory addressing mode…
-        PAYLOAD_COMMAND_CONT, 0x01, // …vertical.
-        PAYLOAD_COMMAND_CONT, 0x8D, // Set charge pump (output power)…
-        PAYLOAD_COMMAND_LAST, 0x14, // …enabled.
-      };
-      return USI_TWI_Master_Transmit(buf, sizeof buf);
+      
+      return master()
+      .transmit(PAYLOAD_COMMAND_CONT, 0x20) // Set memory addressing mode…
+      .transmit(PAYLOAD_COMMAND_CONT, 0x01) // …vertical.
+      .transmit(PAYLOAD_COMMAND_CONT, 0x8D) // Set charge pump (output power)…
+      .transmit(PAYLOAD_COMMAND_LAST, 0x14) // …enabled.
+      .stop();
     }
 
     static USI_TWI_ErrorLevel set_enabled(bool truly = true) {
-      uint8_t buf[] = {
-        first_byte_to_send(),
-        PAYLOAD_COMMAND_LAST, uint8_t(0xAEu | truly)
-      };
-      return USI_TWI_Master_Transmit(buf, sizeof buf);
+      return master()
+      .transmit(PAYLOAD_COMMAND_LAST, uint8_t(0xAEu | truly))
+      .stop();
     }
 
     static USI_TWI_ErrorLevel set_contrast(uint8_t fraction) {
-      uint8_t buf[] = {
-        first_byte_to_send(),
-        PAYLOAD_COMMAND_CONT, 0x81,
-        PAYLOAD_COMMAND_LAST, fraction
-      };
-      return USI_TWI_Master_Transmit(buf, sizeof buf);
-    }
-
-    // First byte of a buffer to be sent.
-    static uint8_t first_byte_to_send() {
-      return USI_TWI_Prefix(USI_TWI_SEND, ADDRESS);
-    }
-    
-    // Sends off buffer and returns 0 on success or error code.
-    static USI_TWI_ErrorLevel send(uint8_t buf[], uint8_t len) {
-      return USI_TWI_Master_Transmit(buf, len);
+      return master()
+      .transmit(PAYLOAD_COMMAND_CONT, 0x81)
+      .transmit(PAYLOAD_COMMAND_LAST, fraction)
+      .stop();
     }
 
     static USI_TWI_ErrorLevel clear() {
-      constexpr uint8_t PAYLOAD = 64;
-      uint8_t buf[2 + PAYLOAD] = { first_byte_to_send(), PAYLOAD_DATA }; // payload gets zero-initialized
-      for (auto i = 0; i < HEIGHT*WIDTH/8/PAYLOAD; ++i) {
-        auto el = USI_TWI_Master_Transmit(buf, sizeof buf);
-        if (el) return el;
+      auto m = master();
+      m.transmit(PAYLOAD_DATA);
+      for (auto i = 0; i < BYTES_PER_SEG * WIDTH; ++i) {
+        m.transmit(0);
       }
-      return USI_TWI_OK;
+      return m.stop();
     }
 };

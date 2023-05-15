@@ -10,8 +10,6 @@
 #include <util/delay.h>
 
 static unsigned char USI_TWI_Master_Transfer(unsigned char);
-static USI_TWI_ErrorLevel USI_TWI_Master_Start();
-static USI_TWI_ErrorLevel USI_TWI_Master_Stop();
 
 /*!
  * @brief USI TWI single master initialization function
@@ -35,28 +33,12 @@ void USI_TWI_Master_Initialise() {
 }
 
 /*!
- * @brief USI Transmit and receive function. LSB of first byte in buffer
- * indicates if a read or write cycles is performed. If set a read
- * operation is performed.
- *
- * Function generates (Repeated) Start Condition, sends address and
- * R/W, Reads/Writes Data, and verifies/sends ACK.
- *
- * This function also handles Random Read function if the memReadMode
- * bit is set. In that case, the function will:
- * The address in memory will be the second
- * byte and is written *without* sending a STOP.
- * Then the Read bit is set (lsb of first byte), the byte count is
- * adjusted (if needed), and the function function starts over by sending
- * the slave address again and reading the data.
+ * @brief USI Transmit function.
  *
  * Success or error code is returned. Error codes are defined in
  * USI_TWI_Master.h
- * @param msg Pointer to the location of the msg buffer
- * @param msgSize How much data to send from the buffer
  */
-USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char * const in_msg,
-                                           unsigned char const in_msgSize) {
+USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const isAddress) {
   unsigned char const tempUSISR_8bit =
       (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
       (1 << USIDC) |    // Prepare register value to: Clear flags, and
@@ -75,51 +57,20 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char * const in_msg,
     return USI_TWI_UE_DATA_COL;
 #endif
 
-  unsigned char *msg = in_msg;
-  unsigned char msgSize = in_msgSize;
-  unsigned char addressMode         = true;   // Always true for195 first byte
-  unsigned char masterWriteDataMode = !(*msg & (1 << USI_TWI_READ_BIT));
+  /* Write a byte */
+  PORT_USI &= ~(1 << PIN_USI_SCL);         // Pull SCL LOW.
+  USIDR = msg;                             // Setup data.
+  USI_TWI_Master_Transfer(tempUSISR_8bit); // Send 8 bits on bus.
 
-  USI_TWI_ErrorLevel el = USI_TWI_Master_Start();
-  if (el) return el;
-
-  /*Write address and Read/Write data */
-  do {
-    /* If masterWrite cycle (or inital address tranmission)*/
-    if (addressMode || masterWriteDataMode) {
-      /* Write a byte */
-      PORT_USI &= ~(1 << PIN_USI_SCL);         // Pull SCL LOW.
-      USIDR = *(msg++);                        // Setup data.
-      USI_TWI_Master_Transfer(tempUSISR_8bit); // Send 8 bits on bus.
-
-      /* Clock and verify (N)ACK from slave */
-      DDR_USI &= ~(1 << PIN_USI_SDA); // Enable SDA as input.
-      if (USI_TWI_Master_Transfer(tempUSISR_1bit) & (1 << USI_TWI_NACK_BIT)) {
-        if (addressMode)
-          return USI_TWI_NO_ACK_ON_ADDRESS;
-        else
-          return USI_TWI_NO_ACK_ON_DATA;
-      }
-
-      addressMode = false;            // Only perform address transmission once.
-    }
-    /* Else masterRead cycle*/
-    else {
-      /* Read a data byte */
-      DDR_USI &= ~(1 << PIN_USI_SDA); // Enable SDA as input.
-      *(msg++) = USI_TWI_Master_Transfer(tempUSISR_8bit);
-
-      /* Prepare to generate ACK (or NACK in case of End Of Transmission) */
-      if (msgSize == 1) // If transmission of last byte was performed.
-      {
-        USIDR = 0xFF; // Load NACK to confirm End Of Transmission.
-      } else {
-        USIDR = 0x00; // Load ACK. Set data register bit 7 (output for SDA) low.
-      }
-      USI_TWI_Master_Transfer(tempUSISR_1bit); // Generate ACK/NACK.
-    }
-  } while (--msgSize); // Until all data sent/received.
-  return USI_TWI_Master_Stop();
+  /* Clock and verify (N)ACK from slave */
+  DDR_USI &= ~(1 << PIN_USI_SDA); // Enable SDA as input.
+  if (USI_TWI_Master_Transfer(tempUSISR_1bit) & (1 << USI_TWI_NACK_BIT)) {
+    if (isAddress)
+      return USI_TWI_NO_ACK_ON_ADDRESS;
+    else
+      return USI_TWI_NO_ACK_ON_DATA;
+  }
+  return USI_TWI_OK;
 }
 
 /*!
