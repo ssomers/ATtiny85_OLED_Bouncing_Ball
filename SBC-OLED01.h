@@ -3,6 +3,8 @@
 template <uint8_t ADDRESS>
 class SBS_OLED01 {
   public:
+    static constexpr int HEIGHT = 64; // number of pixels high
+    static constexpr int WIDTH = 128; // number of pixels wide
     static constexpr uint8_t PAYLOAD_COMMAND_CONT = 0x80; // prefix to command to be continued by option or another command
     static constexpr uint8_t PAYLOAD_COMMAND_LAST = 0x00; // prefix to last option or command
     static constexpr uint8_t PAYLOAD_DATA = 0x40;         // anything 0b01xxxxxx
@@ -22,7 +24,7 @@ class SBS_OLED01 {
     static USI_TWI_ErrorLevel set_enabled(bool truly = true) {
       uint8_t buf[] = {
         first_byte_to_send(),
-        PAYLOAD_COMMAND_LAST, 0xAE | truly
+        PAYLOAD_COMMAND_LAST, uint8_t(0xAEu | truly)
       };
       return USI_TWI_Master_Transmit(buf, sizeof buf);
     }
@@ -47,20 +49,12 @@ class SBS_OLED01 {
     }
 
     static USI_TWI_ErrorLevel clear() {
-      uint8_t buf[2 + 64] = { first_byte_to_send(), PAYLOAD_DATA };
-      for (auto i = 0; i < 128*64/8/64; ++i) {
+      constexpr uint8_t PAYLOAD = 64;
+      uint8_t buf[2 + PAYLOAD] = { first_byte_to_send(), PAYLOAD_DATA }; // payload gets zero-initialized
+      for (auto i = 0; i < HEIGHT*WIDTH/8/PAYLOAD; ++i) {
         auto el = USI_TWI_Master_Transmit(buf, sizeof buf);
         if (el) return el;
       }
       return USI_TWI_OK;
     }
-
-    /*
-    static void cursorTo(uint8_t row, uint8_t col) {
-      sendCommand(0x00 | (0x0F & col) );  // low col = 0
-      sendCommand(0x10 | (0x0F & (col>>4)) );  // hi col = 0
-      //  sendCommand(0x40 | (0x0F & row) ); // line #0
-      sendCommand(0xb0 | (0x03 & row) );  // hi col = 0
-    }
-    */
 };
