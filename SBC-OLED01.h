@@ -14,7 +14,7 @@ class SBS_OLED01 {
       uint8_t buf[] = {
         first_byte_to_send(),
         PAYLOAD_COMMAND_CONT, 0x20, // Set memory addressing mode…
-        PAYLOAD_COMMAND_CONT, 0x00, // …horizontal.
+        PAYLOAD_COMMAND_CONT, 0x01, // …vertical.
         PAYLOAD_COMMAND_CONT, 0x8D, // Set charge pump (output power)…
         PAYLOAD_COMMAND_LAST, 0x14, // …enabled.
       };
