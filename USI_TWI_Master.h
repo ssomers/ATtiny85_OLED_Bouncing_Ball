@@ -1,11 +1,11 @@
 /*****************************************************************************
- * Based on https://github.com/adafruit/TinyWireM
- *
- * Delays mostly removed since the only effect seems to be to… delay execution.
- *
- * Only tested to do I2C communication from an ATtiny85 running at 1, 8 or 16 MHz,
- * to an SSD1306.
- */
+  Based on https://github.com/adafruit/TinyWireM
+
+  Delays mostly removed since the only effect seems to be to… delay execution.
+
+  Only tested to do I2C communication from an ATtiny85 running at 1, 8 or 16 MHz,
+  to an SSD1306.
+*/
 
 //********** Defines **********//
 
@@ -93,7 +93,7 @@ enum USI_TWI_ErrorLevel {
 #endif
 
 /* From the original .h
-// Device dependant defines - These for ATtiny2313. // CHANGED FOR ATtiny85
+  // Device dependant defines - These for ATtiny2313. // CHANGED FOR ATtiny85
 
     #define DDR_USI             DDRB
     #define PORT_USI            PORTB

@@ -1,8 +1,5 @@
-/*!
- * @file USI_TWI_Master.cpp
- */
 /*****************************************************************************
-* Based on https://github.com/adafruit/TinyWireM
+  Based on https://github.com/adafruit/TinyWireM
 ****************************************************************************/
 #include "USI_TWI_Master.h"
 #include <avr/interrupt.h>
