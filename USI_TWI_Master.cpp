@@ -36,23 +36,24 @@ void USI_TWI_Master_Initialise() {
  * USI_TWI_Master.h
  */
 USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const isAddress) {
-  unsigned char const tempUSISR_8bit =
+  unsigned char constexpr tempUSISR_8bit =
       (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
       (1 << USIDC) |    // Prepare register value to: Clear flags, and
       (0x0 << USICNT0); // set USI to shift 8 bits i.e. count 16 clock edges.
-  unsigned char const tempUSISR_1bit =
+  unsigned char constexpr tempUSISR_1bit =
       (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
       (1 << USIDC) |    // Prepare register value to: Clear flags, and
       (0xE << USICNT0); // set USI to shift 1 bit i.e. count 2 clock edges.
 
-#ifdef NOISE_TESTING                                // Test if any unexpected conditions have arrived prior to this execution.
-  if (USISR & (1<<USISIF))
-    return USI_TWI_UE_START_CON;
-  if (USISR & (1<<USIPF))
+  bool const sif = USISR & (1 << USISIF);
+  bool const pf  = USISR & (1 << USIPF);
+  bool const dc  = USISR & (1 << USIDC);
+  if (isAddress != sif)
+    return isAddress ? USI_TWI_ME_START_CON : USI_TWI_UE_START_CON;
+  if (!isAddress && pf)
     return USI_TWI_UE_STOP_CON;
-  if (USISR & (1<<USIDC))
+  if (dc)
     return USI_TWI_UE_DATA_COL;
-#endif
 
   /* Write a byte */
   PORT_USI &= ~(1 << PIN_USI_SCL);         // Pull SCL LOW.
@@ -74,8 +75,8 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
  * @brief Core function for shifting data in and out from the USI.
  * Data to be sent has to be placed into the USIDR prior to calling
  * this function. Data read, will be return'ed from the function.
- * @param temp Temperature to set the USISR
- * @return Returns the temp read from the device
+ * @param temp Temporary value to set the USISR
+ * @return Returns the value read from the device
  */
 unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
   USISR = temp;                          // Set USISR according to temp.

@@ -15,8 +15,6 @@
 #define T2_TWI 5 //!< >4,7us
 #define T4_TWI 4 //!< >4,0us
 
-//#define NOISE_TESTING
-
 /****************************************************************************
   Bit and byte definitions
 ****************************************************************************/
@@ -34,6 +32,7 @@ enum USI_TWI_Direction {
 // are now lowest numbers so they're easily recognized as LED flashes.
 enum USI_TWI_ErrorLevel {
   USI_TWI_OK = 0,
+  USI_TWI_ME_START_CON = 8, //!< Missing Expected Start Condition
   USI_TWI_UE_START_CON = 7, //!< Unexpected Start Condition
   USI_TWI_UE_STOP_CON = 6,  //!< Unexpected Stop Condition
   USI_TWI_UE_DATA_COL = 5,  //!< Unexpected Data Collision (arbitration)
@@ -106,7 +105,7 @@ enum USI_TWI_ErrorLevel {
 
 //********** Prototypes **********//
 
-// First byte of a buffer to be passed to USI_TWI_Start_Read_Write.
+// First byte of a buffer to be transmitted after USI_TWI_Master_Start.
 inline unsigned char USI_TWI_Prefix(USI_TWI_Direction direction, unsigned char address) {
   return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
 }
@@ -115,40 +114,3 @@ void               USI_TWI_Master_Initialise();
 USI_TWI_ErrorLevel USI_TWI_Master_Start();
 USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char msg, bool isAddress);
 USI_TWI_ErrorLevel USI_TWI_Master_Stop();
-
-class USI_TWI_Master {
-    USI_TWI_ErrorLevel err;
-  public:
-    explicit USI_TWI_Master(unsigned char address) :
-      err(USI_TWI_Master_Start()) {
-      if (!err) {
-        err = USI_TWI_Master_Transmit(USI_TWI_Prefix(USI_TWI_SEND, address), true);
-      }
-    }
-
-    USI_TWI_Master& transmit(unsigned char msg) {
-      if (!err) {
-        err = USI_TWI_Master_Transmit(msg, false);
-      }
-      return *this;
-    }
-
-    USI_TWI_Master& transmit(unsigned char msg1, unsigned char msg2) {
-      transmit(msg1);
-      transmit(msg2);
-      return *this;
-    }
-
-    USI_TWI_Master& transmit(unsigned char * buf, unsigned char len) {
-      for (unsigned char i = 0; i < len; ++i) {
-        transmit(buf[i]);
-      }
-      return *this;
-    }
-
-    USI_TWI_ErrorLevel stop() {
-      auto stop_err = USI_TWI_Master_Stop();
-      if (err) return err;
-      return stop_err;
-    }
-};
