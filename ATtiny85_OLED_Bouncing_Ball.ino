@@ -8,9 +8,10 @@ typedef SBS_OLED01<0x3C> OLED;
 // - "Y" and "X" refer to the rows and columns of actual pixels
 static uint8_t constexpr X_PER_COL = 4;
 static uint8_t constexpr Y_PER_ROW = 4;
-static uint8_t constexpr BYTES_PER_X = OLED::BYTES_PER_SEG;
 static uint8_t constexpr COLS = OLED::WIDTH / X_PER_COL;
 static uint8_t constexpr ROWS = OLED::HEIGHT / Y_PER_ROW;
+static uint8_t constexpr BYTES_PER_X = OLED::BYTES_PER_SEG;
+static uint8_t constexpr ROWS_PER_BYTE = 8 / Y_PER_ROW;
 
 static uint8_t ballY = 10 * Y_PER_ROW;
 static uint8_t ballX =  7 * X_PER_COL;
@@ -75,41 +76,37 @@ static void reportError(OLED::Status status) {
 static void displayRoom() {
   OLED::SSD1306 m(40);
   m.send(OLED::PAYLOAD_DATA);
-  for (int8_t c = 0; c < COLS; c += 1) {
+  for (uint8_t c = 0; c < COLS; c += 1) {
     uint8_t buf[BYTES_PER_X * X_PER_COL];
-    for (int8_t r = 0; r < ROWS; r += 8 / Y_PER_ROW) {
-      uint8_t* subbuf = buf + r / 2;
-      subbuf[0 * BYTES_PER_X] = 0;
-      subbuf[1 * BYTES_PER_X] = 0;
-      subbuf[2 * BYTES_PER_X] = 0;
-      subbuf[3 * BYTES_PER_X] = 0;
+    for (uint8_t rp = 0; rp < ROWS / ROWS_PER_BYTE; rp += 1) {
+      uint8_t const r = rp * ROWS_PER_BYTE;
+
+      uint8_t* const subbuf = &buf[rp];
+      for (uint8_t i = 0; i < X_PER_COL; ++i) {
+        subbuf[i * BYTES_PER_X] = 0;
+      }
 
       // room
-      if (getWall(r, c)) {
-        subbuf[0 * BYTES_PER_X] |= 0xF << 0;
-        subbuf[1 * BYTES_PER_X] |= 0xF << 0;
-        subbuf[2 * BYTES_PER_X] |= 0xF << 0;
-        subbuf[3 * BYTES_PER_X] |= 0xF << 0;
-      }
-      if (getWall(r + 1, c)) {
-        subbuf[0 * BYTES_PER_X] |= 0xF << Y_PER_ROW;
-        subbuf[1 * BYTES_PER_X] |= 0xF << Y_PER_ROW;
-        subbuf[2 * BYTES_PER_X] |= 0xF << Y_PER_ROW;
-        subbuf[3 * BYTES_PER_X] |= 0xF << Y_PER_ROW;
+      for (uint8_t s = 0; s < ROWS_PER_BYTE; ++s) {
+        if (getWall(r + s, c)) {
+          for (uint8_t i = 0; i < X_PER_COL; ++i) {
+            subbuf[i * BYTES_PER_X] |= 0xF << (s * Y_PER_ROW);
+          }
+        }
       }
 
       // ball
       int8_t const ballXoffset = int8_t(ballX) - int8_t(c * X_PER_COL);
       int8_t const ballYoffset = int8_t(ballY) - int8_t(r * Y_PER_ROW);
       if (ballXoffset < X_PER_COL && -Y_PER_ROW < ballYoffset && ballYoffset < Y_PER_ROW * 2) {
-        uint8_t const i0 = ballXoffset < 0 ? -ballXoffset : 0;
+        uint8_t const i0 =         0 + (ballXoffset < 0 ? -ballXoffset : 0);
         uint8_t const iN = X_PER_COL - (ballXoffset < 0 ? 0 : ballXoffset);
         for (uint8_t i = i0; i < iN; ++i) {
           subbuf[(i + ballXoffset) * BYTES_PER_X] |= leftshift(ball_shape[i], ballYoffset);
         }
       }
     }
-    for (unsigned char i = 0; i < sizeof buf; ++i) {
+    for (uint8_t i = 0; i < sizeof buf; ++i) {
       m.send(buf[i]);
     }
   }
