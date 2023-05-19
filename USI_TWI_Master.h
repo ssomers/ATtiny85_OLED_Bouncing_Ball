@@ -1,19 +1,15 @@
 /*****************************************************************************
   Based on https://github.com/adafruit/TinyWireM
 
-  Delays mostly removed since the only effect seems to be to… delay execution.
+  Delays mostly removed or reduced, since only the one at the end of
+  USI_TWI_Master_Stop matters in practice on my devices, and the
+  specification I read requires much shorter minimum times then
 
   Only tested to do I2C communication from an ATtiny85 running at 1, 8 or 16 MHz,
   to an SSD1306.
 */
 
 //********** Defines **********//
-
-// Defines controlling timing limits - SCL <= 100KHz.
-
-// For use with _delay_us()
-#define T2_TWI 5 //!< >4,7us
-#define T4_TWI 4 //!< >4,0us
 
 /****************************************************************************
   Bit and byte definitions

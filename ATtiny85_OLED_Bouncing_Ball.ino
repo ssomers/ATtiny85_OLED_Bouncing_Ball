@@ -68,14 +68,14 @@ static void reportError(OLED::Status status) {
   if (status.errorlevel) {
     flashN(status.errorlevel);
     delay(300);
-    flashN(status.tracker);
+    flashN(status.location);
     delay(900);
   }
 }
 
 static void displayRoom() {
-  OLED::SSD1306 m(40);
-  m.send(OLED::PAYLOAD_DATA);
+  OLED::Chat chat(40);
+  chat.send(OLED::PAYLOAD_DATA);
   for (uint8_t c = 0; c < COLS; c += 1) {
     uint8_t buf[BYTES_PER_X * X_PER_COL];
     for (uint8_t rp = 0; rp < ROWS / ROWS_PER_BYTE; rp += 1) {
@@ -107,10 +107,10 @@ static void displayRoom() {
       }
     }
     for (uint8_t i = 0; i < sizeof buf; ++i) {
-      m.send(buf[i]);
+      chat.send(buf[i]);
     }
   }
-  reportError(m.stop());
+  reportError(chat.stop());
 }
 
 static void move() {
