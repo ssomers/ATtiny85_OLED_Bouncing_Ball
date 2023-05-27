@@ -1,3 +1,5 @@
+#pragma once
+
 /*****************************************************************************
   Based on https://github.com/adafruit/TinyWireM
 

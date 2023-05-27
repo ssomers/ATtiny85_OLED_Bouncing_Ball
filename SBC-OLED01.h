@@ -1,3 +1,4 @@
+#pragma once
 #include "USI_TWI_Master.h"
 
 class SBS_OLED01 {
@@ -96,7 +97,7 @@ class SBS_OLED01 {
           return *this;
         }
 
-        Chat& set_column_address(uint8_t start = 0, uint8_t end = WIDTH -1) {
+        Chat& set_column_address(uint8_t start = 0, uint8_t end = WIDTH - 1) {
           send(PAYLOAD_COMMAND).send(0x21);
           send(PAYLOAD_COMMAND).send(start);
           send(PAYLOAD_COMMAND).send(end);
