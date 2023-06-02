@@ -6,20 +6,42 @@
 #include <avr/io.h>
 #include <math.h>
 
-static unsigned constexpr nanoseconds_to_cycles(float ns) {
-  return ceil(ns * F_CPU / 1e9) - 1;
+static USI_TWI_ErrorLevel USI_TWI_Master_Start();
+static unsigned char USI_TWI_Master_Transfer(unsigned char);
+static USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char msg, bool isAddress);
+
+static unsigned long constexpr microseconds_to_cycles(double us) {
+  return ceil(us / 1e6 * F_CPU) - 1;
   // - 1 because whatever we did before or do next takes at least 1 cycle to have effect
 }
 
-static unsigned constexpr tHSTART = nanoseconds_to_cycles(600);
-static unsigned constexpr tSSTOP = nanoseconds_to_cycles(600);
-static unsigned constexpr tIDLE = nanoseconds_to_cycles(1300);
+static unsigned long constexpr tHSTART = microseconds_to_cycles(.6);
+static unsigned long constexpr tSSTOP = microseconds_to_cycles(.6);
+static unsigned long constexpr tIDLE = microseconds_to_cycles(1.3);
 
-static void delay_cycles(unsigned cycles) {
+static void delay_cycles(unsigned long cycles) {
   __builtin_avr_delay_cycles(cycles);
 }
 
-static unsigned char USI_TWI_Master_Transfer(unsigned char);
+enum USI_TWI_Direction {
+  USI_TWI_SEND = 0,
+  USI_TWI_RCVE = 1,
+};
+
+// First byte transmitted after a start condition.
+static unsigned char prefix(USI_TWI_Direction direction, unsigned char address) {
+  return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
+}
+
+
+static unsigned char constexpr tempUSISR_8bit =
+      (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
+      (1 << USIDC) |    // Prepare register value to: Clear flags, and
+      (0x0 << USICNT0); // set USI to shift 8 bits i.e. count 16 clock edges.
+static unsigned char constexpr tempUSISR_1bit =
+      (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
+      (1 << USIDC) |    // Prepare register value to: Clear flags, and
+      (0xE << USICNT0); // set USI to shift 1 bit i.e. count 2 clock edges.
 
 /*!
  * @brief USI TWI single master initialization function
@@ -42,6 +64,16 @@ void USI_TWI_Master_Initialise() {
           (0x0 << USICNT0); // and reset counter.
 }
 
+USI_TWI_ErrorLevel USI_TWI_Master_Start_Sending(unsigned char address) {
+    auto err = USI_TWI_Master_Start();
+    if (err) return err;
+    return USI_TWI_Master_Transmit(prefix(USI_TWI_SEND, address), true);
+}
+
+USI_TWI_ErrorLevel USI_TWI_Master_Send(unsigned char msg) {
+  return USI_TWI_Master_Transmit(msg, false);
+}
+
 /*!
  * @brief USI Transmit function.
  *
@@ -49,15 +81,6 @@ void USI_TWI_Master_Initialise() {
  * USI_TWI_Master.h
  */
 USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const isAddress) {
-  unsigned char constexpr tempUSISR_8bit =
-      (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
-      (1 << USIDC) |    // Prepare register value to: Clear flags, and
-      (0x0 << USICNT0); // set USI to shift 8 bits i.e. count 16 clock edges.
-  unsigned char constexpr tempUSISR_1bit =
-      (1 << USISIF) | (1 << USIOIF) | (1 << USIPF) |
-      (1 << USIDC) |    // Prepare register value to: Clear flags, and
-      (0xE << USICNT0); // set USI to shift 1 bit i.e. count 2 clock edges.
-
   bool const sif = (USISR & (1 << USISIF)) != 0;
   if (isAddress != sif) {
     if (isAddress) {
@@ -96,7 +119,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
  * @brief Core function for shifting data in and out from the USI.
  * Data to be sent has to be placed into the USIDR prior to calling
  * this function. Data read, will be return'ed from the function.
- * @param temp Temporary value to set the USISR
+ * @param temp Temporary value for the USISR
  * @return Returns the value read from the device
  */
 unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
@@ -112,7 +135,7 @@ unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
     while (!(PIN_USI & (1 << PIN_USI_SCL)))
       ; // Wait for SCL to go high.
     USICR = temp;                     // Generate negative SCL edge.
-    while ((PIN_USI & (1 << PIN_USI_SCL)))
+    while (PIN_USI & (1 << PIN_USI_SCL))
       ; // Wait for SCL to go low.
   } while (!(USISR & (1 << USIOIF))); // Check for transfer complete.
 
@@ -122,6 +145,7 @@ unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
 
   return temp; // Return the data from the USIDR
 }
+
 /*!
  * @brief Function for generating a TWI Start Condition.
  * @return Returns USI_TWI_OK if the signal can be verified, otherwise returns error code.
@@ -144,6 +168,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Start() {
 
   return USI_TWI_OK;
 }
+
 /*!
  * @brief Function for generating a TWI Stop Condition. Used to release
  * the TWI bus.
@@ -156,7 +181,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Stop() {
     ; // Wait for SCL to go high.
   delay_cycles(tSSTOP);
   PORT_USI |= (1 << PIN_USI_SDA); // Release SDA.
-  while ((PIN_USI & (1 << PIN_USI_SDA)))
+  while (PIN_USI & (1 << PIN_USI_SDA))
     ; // Wait for SDA to go low.
   delay_cycles(tIDLE);
 

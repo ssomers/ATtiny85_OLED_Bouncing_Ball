@@ -1,8 +1,7 @@
 #include <inttypes.h>
-#include "SBC-OLED01.h"
+#include "OLED.h"
 
-typedef SBS_OLED01 OLED;
-static byte constexpr ADDRESS = 0x3C;
+static byte constexpr OLED_ADDRESS = 0x3C;
 
 // Terminology:
 // - "row" & "col" apply to the coarse grid defining the room
@@ -65,18 +64,18 @@ static void flashN(uint8_t number) {
   }
 }
 
-static void reportError(OLED::Status status) {
+static void reportError(I2C::Status status) {
   if (status.errorlevel) {
     delay(300);
     flashN(status.errorlevel);
-    delay(300);
+    delay(600);
     flashN(status.location);
     delay(900);
   }
 }
 
-static OLED::Status displayRoom() {
-  auto chat = OLED::Chat(ADDRESS, 20).start_data();
+static I2C::Status displayRoom() {
+  auto chat = OLED::Chat(OLED_ADDRESS, 20).start_data();
   for (uint8_t c = 0; c < COLS; c += 1) {
     uint8_t buf[BYTES_PER_X * X_PER_COL];
     for (uint8_t rp = 0; rp < ROWS / ROWS_PER_BYTE; rp += 1) {
@@ -116,6 +115,9 @@ static OLED::Status displayRoom() {
 
 static void move() {
   for (uint8_t twice = 0; twice < 2; ++twice) {
+    // We consider the ball to be a square for collision detection.
+    // Add size of the ball in pixels when moving in a positive direction,
+    // because that's the edge of the square possibly hitting a wall.
     uint8_t const edgeY = ballY + ballYDir + (ballYDir < 0 ? 0 : Y_PER_ROW - 1);
     uint8_t const edgeX = ballX + ballXDir + (ballXDir < 0 ? 0 : X_PER_COL - 1);
     bool const yHit = getWall(edgeY / Y_PER_ROW, ballX / X_PER_COL) != 0;
@@ -132,7 +134,7 @@ static void move() {
       return;
     }
   }
-  reportError(OLED::Status { 11, 0 }); // trapped between walls
+  reportError(I2C::Status { 11, 0 }); // trapped between walls
 }
 
 
@@ -140,7 +142,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   USI_TWI_Master_Initialise();
-  auto err = OLED::Chat(ADDRESS, 0)
+  auto err = OLED::Chat(OLED_ADDRESS, 0)
              .init()
              .set_addressing_mode(OLED::VerticalAddressing)
              .set_column_address()
@@ -155,7 +157,8 @@ void setup() {
 }
 
 void loop() {
-  delay(30);
+  digitalWrite(LED_BUILTIN, HIGH);
   move();
+  digitalWrite(LED_BUILTIN, LOW);
   reportError(displayRoom());
 }
