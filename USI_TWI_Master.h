@@ -23,8 +23,10 @@
 
 // Note these have been renumbered from the Atmel Apps Note. Most likely errors
 // are now lowest numbers so they're easily recognized as LED flashes.
-enum USI_TWI_ErrorLevel {
+enum USI_TWI_ErrorLevel : unsigned char {
   USI_TWI_OK = 0,
+  USI_TWI_NO_SCL_HI = 11, //!< SCL did not go high when instructed to.
+  USI_TWI_NO_SCL_LO = 12, //!< SCL did not go low when instructed to.
   USI_TWI_ME_START_CON = 8, //!< Missing Expected Start Condition
   USI_TWI_UE_START_CON = 7, //!< Unexpected Start Condition
   USI_TWI_UE_STOP_CON = 6,  //!< Unexpected Stop Condition

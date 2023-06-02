@@ -71,4 +71,28 @@ class OLED {
           return send(PAYLOAD_DATA);
         }
     };
+
+    // Data conversation with SSD 1306 addressing two consecutive pages (i.e. one of four rows).
+    class QuarterChat : public I2C::Chat {
+      public:
+        QuarterChat(uint8_t address, uint8_t quarter, uint8_t xBegin = 0, uint8_t xEnd = OLED::WIDTH - 1)
+          : I2C::Chat{OLED::Chat(address, 20)
+                      .set_page_address(quarter * 2, quarter * 2 + 1)
+                      .set_column_address(xBegin, xEnd)
+                      .start_data()}
+        {}
+
+        // Send one column.
+        QuarterChat& send(byte b1, byte b2) {
+          I2C::Chat::send(b1);
+          I2C::Chat::send(b2);
+          return *this;
+        }
+
+        // Send N empty columns.
+        QuarterChat& sendSpacing(uint16_t width) {
+          I2C::Chat::sendN(width * 2, 0);
+          return *this;
+        }
+    };
 };

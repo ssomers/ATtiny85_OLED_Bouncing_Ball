@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include "OLED.h"
+#include "GlyphsOnQuarter.h"
 
 static byte constexpr OLED_ADDRESS = 0x3C;
 
@@ -21,22 +22,22 @@ static int8_t ballXDir = -2;
 static uint8_t constexpr ball_shape[X_PER_COL] = { 0x6, 0xF, 0xF, 0x6 }; // pixel columns per X
 
 static uint8_t const room_shape[ROWS * COLS] PROGMEM = {
-  1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,2,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,2,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,2,0,0,0,0,2 , 2,2,2,0,0,0,0,1,
-  1,0,0,0,2,0,0,0 , 0,0,2,2,2,0,0,0 , 0,0,2,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,2,0,0,0 , 0,0,0,0,2,0,0,0 , 0,0,2,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,2,0,0,0 , 0,0,0,0,2,2,2,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,2,2,2,2,0,0,0 , 0,2,0,0,0,0,0,2 , 2,2,2,2,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,2,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,0 , 0,0,0,0,0,0,0,1,
-  1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1 , 1,1,1,1,1,1,1,1,
+  1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 2, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 2, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 2, 0, 0, 0, 0, 2 , 2, 2, 2, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 2, 0, 0, 0 , 0, 0, 2, 2, 2, 0, 0, 0 , 0, 0, 2, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 2, 0, 0, 0 , 0, 0, 0, 0, 2, 0, 0, 0 , 0, 0, 2, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 2, 0, 0, 0 , 0, 0, 0, 0, 2, 2, 2, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 2, 2, 2, 2, 0, 0, 0 , 0, 2, 0, 0, 0, 0, 0, 2 , 2, 2, 2, 2, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 2, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 1,
+  1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1 , 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
 static uint8_t leftshift(uint8_t value, int8_t positions) {
@@ -59,18 +60,34 @@ static void flashN(uint8_t number) {
     number -= 1;
     delay(100);
     digitalWrite(LED_BUILTIN, HIGH);
-    delay(300);
+    delay(200);
     digitalWrite(LED_BUILTIN, LOW);
   }
 }
 
-static void reportError(I2C::Status status) {
+// Report error when we're unusure the display is accessible.
+static void flashError(I2C::Status status) {
   if (status.errorlevel) {
     delay(300);
     flashN(status.errorlevel);
     delay(600);
     flashN(status.location);
     delay(900);
+  }
+}
+
+// Report error when there's a good chance the display is accessible.
+static void displayError(I2C::Status status) {
+  if (status.errorlevel) {
+    auto chat = OLED::QuarterChat{OLED_ADDRESS, 3};
+    GlyphsOnQuarter::send(chat, Glyph::overflow);
+    GlyphsOnQuarter::send3digits(chat, status.errorlevel);
+    GlyphsOnQuarter::send(chat, Glyph::overflow);
+    GlyphsOnQuarter::send3digits(chat, status.location);
+    GlyphsOnQuarter::send(chat, Glyph::overflow);
+    for (;;) {
+      flashError(status);
+    }
   }
 }
 
@@ -134,7 +151,7 @@ static void move() {
       return;
     }
   }
-  reportError(I2C::Status { 11, 0 }); // trapped between walls
+  displayError(I2C::Status { 11, 0 }); // trapped between walls
 }
 
 
@@ -153,12 +170,12 @@ void setup() {
     err = displayRoom();
   }
   digitalWrite(LED_BUILTIN, LOW);
-  reportError(err);
+  flashError(err);
 }
 
 void loop() {
   digitalWrite(LED_BUILTIN, HIGH);
   move();
   digitalWrite(LED_BUILTIN, LOW);
-  reportError(displayRoom());
+  displayError(displayRoom());
 }

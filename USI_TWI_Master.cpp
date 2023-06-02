@@ -6,8 +6,20 @@
 #include <avr/io.h>
 #include <math.h>
 
+struct Response {
+  USI_TWI_ErrorLevel const errorlevel;
+  unsigned char const received;
+
+  static Response ok(unsigned char received) {
+    return Response{USI_TWI_OK, received};
+  }
+  static Response err(USI_TWI_ErrorLevel err) {
+    return Response{err, 0};
+  }
+};
+
 static USI_TWI_ErrorLevel USI_TWI_Master_Start();
-static unsigned char USI_TWI_Master_Transfer(unsigned char);
+static Response USI_TWI_Master_Transfer(unsigned char);
 static USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char msg, bool isAddress);
 
 static unsigned long constexpr microseconds_to_cycles(double us) {
@@ -102,11 +114,14 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
   /* Write a byte */
   PORT_USI &= ~(1 << PIN_USI_SCL);         // Pull SCL LOW.
   USIDR = msg;                             // Setup data.
-  USI_TWI_Master_Transfer(tempUSISR_8bit); // Send 8 bits on bus.
+  auto err = USI_TWI_Master_Transfer(tempUSISR_8bit).errorlevel; // Send 8 bits on bus.
+  if (err) return err;
 
   /* Clock and verify (N)ACK from slave */
   DDR_USI &= ~(1 << PIN_USI_SDA); // Enable SDA as input.
-  if (USI_TWI_Master_Transfer(tempUSISR_1bit) & (1 << USI_TWI_NACK_BIT)) {
+  auto tr = USI_TWI_Master_Transfer(tempUSISR_1bit);
+  if (tr.errorlevel) return tr.errorlevel;
+  if (tr.received & (1 << USI_TWI_NACK_BIT)) {
     if (isAddress)
       return USI_TWI_NO_ACK_ON_ADDRESS;
     else
@@ -122,7 +137,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
  * @param temp Temporary value for the USISR
  * @return Returns the value read from the device
  */
-unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
+Response USI_TWI_Master_Transfer(unsigned char temp) {
   USISR = temp;                          // Set USISR according to temp.
                                          // Prepare clocking.
   temp = (0 << USISIE) | (0 << USIOIE) | // Interrupts disabled
@@ -132,18 +147,28 @@ unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
          (1 << USITC);   // Toggle Clock Port.
   do {
     USICR = temp; // Generate positve SCL edge.
-    while (!(PIN_USI & (1 << PIN_USI_SCL)))
-      ; // Wait for SCL to go high.
+    unsigned char counter = 0;
+    while (!(PIN_USI & (1 << PIN_USI_SCL))) {
+      // Wait for SCL to go high.
+      if (++counter == 0) {
+        return Response::err(USI_TWI_NO_SCL_HI);
+      }
+    }
     USICR = temp;                     // Generate negative SCL edge.
-    while (PIN_USI & (1 << PIN_USI_SCL))
-      ; // Wait for SCL to go low.
+    counter = 0;
+    while (PIN_USI & (1 << PIN_USI_SCL)) {
+      // Wait for SCL to go low.
+      if (++counter == 0) {
+        return Response::err(USI_TWI_NO_SCL_LO);
+      }
+    }
   } while (!(USISR & (1 << USIOIF))); // Check for transfer complete.
 
   temp = USIDR;                  // Read out data.
   USIDR = 0xFF;                  // Release SDA.
   DDR_USI |= (1 << PIN_USI_SDA); // Enable SDA as output.
 
-  return temp; // Return the data from the USIDR
+  return Response::ok(temp);
 }
 
 /*!
@@ -153,8 +178,13 @@ unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
 USI_TWI_ErrorLevel USI_TWI_Master_Start() {
   /* Release SCL to ensure that (repeated) Start can be performed */
   PORT_USI |= (1 << PIN_USI_SCL); // Release SCL.
-  while (!(PORT_USI & (1 << PIN_USI_SCL)))
-    ; // Verify that SCL becomes high.
+  unsigned char counter = 0;
+  while (!(PORT_USI & (1 << PIN_USI_SCL))) {
+    // Verify that SCL becomes high.
+    if (++counter == 0) {
+      return USI_TWI_NO_SCL_LO;
+    }
+  }
 
   /* Generate Start Condition */
   PORT_USI &= ~(1 << PIN_USI_SDA); // Force SDA LOW.
@@ -177,12 +207,15 @@ USI_TWI_ErrorLevel USI_TWI_Master_Start() {
 USI_TWI_ErrorLevel USI_TWI_Master_Stop() {
   PORT_USI &= ~(1 << PIN_USI_SDA); // Pull SDA low.
   PORT_USI |= (1 << PIN_USI_SCL);  // Release SCL.
-  while (!(PIN_USI & (1 << PIN_USI_SCL)))
-    ; // Wait for SCL to go high.
+  unsigned char counter = 0;
+  while (!(PIN_USI & (1 << PIN_USI_SCL))) {
+    // Wait for SCL to go high.
+    if (++counter == 0) {
+      return USI_TWI_NO_SCL_HI;
+    }
+  }
   delay_cycles(tSSTOP);
   PORT_USI |= (1 << PIN_USI_SDA); // Release SDA.
-  while (PIN_USI & (1 << PIN_USI_SDA))
-    ; // Wait for SDA to go low.
   delay_cycles(tIDLE);
 
   if (!(USISR & (1 << USIPF))) {
