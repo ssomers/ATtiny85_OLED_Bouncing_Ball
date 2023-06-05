@@ -6,20 +6,8 @@
 #include <avr/io.h>
 #include <math.h>
 
-struct Response {
-  USI_TWI_ErrorLevel const errorlevel;
-  unsigned char const received;
-
-  static Response ok(unsigned char received) {
-    return Response{USI_TWI_OK, received};
-  }
-  static Response err(USI_TWI_ErrorLevel err) {
-    return Response{err, 0};
-  }
-};
-
 static USI_TWI_ErrorLevel USI_TWI_Master_Start();
-static Response USI_TWI_Master_Transfer(unsigned char);
+static unsigned char USI_TWI_Master_Transfer(unsigned char);
 static USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char msg, bool isAddress);
 
 static unsigned long constexpr microseconds_to_cycles(double us) {
@@ -27,6 +15,9 @@ static unsigned long constexpr microseconds_to_cycles(double us) {
   // - 1 because whatever we did before or do next takes at least 1 cycle to have effect
 }
 
+static unsigned long constexpr tPRE_SCL_HIGH = 0;
+static unsigned long constexpr tPOST_SCL_HIGH = 0;
+static unsigned long constexpr tPOST_TRANSFER = 0;
 static unsigned long constexpr tHSTART = microseconds_to_cycles(.6);
 static unsigned long constexpr tSSTOP = microseconds_to_cycles(.6);
 static unsigned long constexpr tIDLE = microseconds_to_cycles(1.3);
@@ -41,8 +32,8 @@ enum USI_TWI_Direction {
 };
 
 // First byte transmitted after a start condition.
-static unsigned char prefix(USI_TWI_Direction direction, unsigned char address) {
-  return (address << USI_TWI_ADR_BITS) | (direction << USI_TWI_READ_BIT);
+static unsigned char constexpr prefix(USI_TWI_Direction direction, unsigned char address) {
+  return address << USI_TWI_ADR_BITS | direction << USI_TWI_READ_BIT;
 }
 
 
@@ -114,14 +105,12 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
   /* Write a byte */
   PORT_USI &= ~(1 << PIN_USI_SCL);         // Pull SCL LOW.
   USIDR = msg;                             // Setup data.
-  auto err = USI_TWI_Master_Transfer(tempUSISR_8bit).errorlevel; // Send 8 bits on bus.
-  if (err) return err;
+  USI_TWI_Master_Transfer(tempUSISR_8bit); // Send 8 bits on bus.
 
   /* Clock and verify (N)ACK from slave */
   DDR_USI &= ~(1 << PIN_USI_SDA); // Enable SDA as input.
-  auto tr = USI_TWI_Master_Transfer(tempUSISR_1bit);
-  if (tr.errorlevel) return tr.errorlevel;
-  if (tr.received & (1 << USI_TWI_NACK_BIT)) {
+  auto received = USI_TWI_Master_Transfer(tempUSISR_1bit);
+  if (received & (1 << USI_TWI_NACK_BIT)) {
     if (isAddress)
       return USI_TWI_NO_ACK_ON_ADDRESS;
     else
@@ -137,7 +126,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char const msg, bool const i
  * @param temp Temporary value for the USISR
  * @return Returns the value read from the device
  */
-Response USI_TWI_Master_Transfer(unsigned char temp) {
+unsigned char USI_TWI_Master_Transfer(unsigned char temp) {
   USISR = temp;                          // Set USISR according to temp.
                                          // Prepare clocking.
   temp = (0 << USISIE) | (0 << USIOIE) | // Interrupts disabled
@@ -146,29 +135,20 @@ Response USI_TWI_Master_Transfer(unsigned char temp) {
          (1 << USICLK) | // Software clock strobe as source.
          (1 << USITC);   // Toggle Clock Port.
   do {
+    delay_cycles(tPRE_SCL_HIGH);
     USICR = temp; // Generate positve SCL edge.
-    unsigned char counter = 0;
-    while (!(PIN_USI & (1 << PIN_USI_SCL))) {
-      // Wait for SCL to go high.
-      if (++counter == 0) {
-        return Response::err(USI_TWI_NO_SCL_HI);
-      }
-    }
+    while (!(PIN_USI & (1 << PIN_USI_SCL)))
+      ; // Wait for SCL to go high.
+    delay_cycles(tPOST_SCL_HIGH);
     USICR = temp;                     // Generate negative SCL edge.
-    counter = 0;
-    while (PIN_USI & (1 << PIN_USI_SCL)) {
-      // Wait for SCL to go low.
-      if (++counter == 0) {
-        return Response::err(USI_TWI_NO_SCL_LO);
-      }
-    }
   } while (!(USISR & (1 << USIOIF))); // Check for transfer complete.
 
+  delay_cycles(tPOST_TRANSFER);
   temp = USIDR;                  // Read out data.
   USIDR = 0xFF;                  // Release SDA.
   DDR_USI |= (1 << PIN_USI_SDA); // Enable SDA as output.
 
-  return Response::ok(temp);
+  return temp; // Return the data from the USIDR
 }
 
 /*!
@@ -179,10 +159,10 @@ USI_TWI_ErrorLevel USI_TWI_Master_Start() {
   /* Release SCL to ensure that (repeated) Start can be performed */
   PORT_USI |= (1 << PIN_USI_SCL); // Release SCL.
   unsigned char counter = 0;
-  while (!(PORT_USI & (1 << PIN_USI_SCL))) {
-    // Verify that SCL becomes high.
+  while (!(PIN_USI & (1 << PIN_USI_SCL))) {
+    ; // Verify that SCL becomes high.
     if (++counter == 0) {
-      return USI_TWI_NO_SCL_LO;
+      return USI_TWI_NO_SCL_HI;
     }
   }
 
@@ -209,7 +189,7 @@ USI_TWI_ErrorLevel USI_TWI_Master_Stop() {
   PORT_USI |= (1 << PIN_USI_SCL);  // Release SCL.
   unsigned char counter = 0;
   while (!(PIN_USI & (1 << PIN_USI_SCL))) {
-    // Wait for SCL to go high.
+    ; // Wait for SCL to go high.
     if (++counter == 0) {
       return USI_TWI_NO_SCL_HI;
     }
