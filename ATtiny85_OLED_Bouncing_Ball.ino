@@ -2,7 +2,15 @@
 #include "OLED.h"
 #include "GlyphsOnQuarter.h"
 
-static byte constexpr OLED_ADDRESS = 0x3C;
+struct OLED_DEVICE {
+  static constexpr uint8_t ADDRESS { 0x3C };
+  static constexpr USI_TWI_Delay tHSTART { 0 };
+  static constexpr USI_TWI_Delay tSSTOP { 0 };
+  static constexpr USI_TWI_Delay tIDLE { .6 };
+  static constexpr USI_TWI_Delay tPRE_SCL_HIGH { 0 };
+  static constexpr USI_TWI_Delay tPOST_SCL_HIGH { 0 };
+  static constexpr USI_TWI_Delay tPOST_TRANSFER { 0 };
+};
 
 // Terminology:
 // - "row" & "col" apply to the coarse grid defining the room
@@ -65,7 +73,7 @@ static void flashN(uint8_t number) {
   }
 }
 
-// Report error when we're unusure the display is accessible.
+// Report error when we're unsure the display is accessible.
 static void flashError(I2C::Status status) {
   if (status.errorlevel) {
     delay(300);
@@ -79,7 +87,7 @@ static void flashError(I2C::Status status) {
 // Report error when there's a good chance the display is accessible.
 static void displayError(I2C::Status status) {
   if (status.errorlevel) {
-    auto chat = OLED::QuarterChat{OLED_ADDRESS, 3};
+    auto chat = OLED::QuarterChat<OLED_DEVICE> {3};
     GlyphsOnQuarter::send(chat, Glyph::overflow);
     GlyphsOnQuarter::send3digits(chat, status.errorlevel);
     GlyphsOnQuarter::send(chat, Glyph::overflow);
@@ -92,7 +100,7 @@ static void displayError(I2C::Status status) {
 }
 
 static I2C::Status displayRoom() {
-  auto chat = OLED::Chat(OLED_ADDRESS, 20).start_data();
+  auto chat = OLED::Chat<OLED_DEVICE>(20).start_data();
   for (uint8_t c = 0; c < COLS; c += 1) {
     uint8_t buf[BYTES_PER_X * X_PER_COL];
     for (uint8_t rp = 0; rp < ROWS / ROWS_PER_BYTE; rp += 1) {
@@ -159,7 +167,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   USI_TWI_Master_Initialise();
-  auto err = OLED::Chat(OLED_ADDRESS, 0)
+  auto err = OLED::Chat<OLED_DEVICE>(0)
              .init()
              .set_addressing_mode(OLED::VerticalAddressing)
              .set_column_address()

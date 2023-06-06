@@ -11,14 +11,15 @@ struct Status {
 };
 
 // Data conversation with an I2C device.
+template <typename Device>
 class Chat {
   private:
     USI_TWI_ErrorLevel err;
     uint8_t location;
 
   public:
-    Chat(byte address, uint8_t start_location) :
-      err{USI_TWI_Master_Start_Sending(address)},
+    explicit Chat(uint8_t start_location) :
+      err{USI_TWI_Master_Start_Sending<Device>()},
       location{start_location} {
     }
 
@@ -31,7 +32,7 @@ class Chat {
     Chat& send(byte msg) {
       if (!err) {
         ++location;
-        err = USI_TWI_Master_Send(msg);
+        err = USI_TWI_Master_Send<Device>(msg);
       }
       return *this;
     }
@@ -46,7 +47,7 @@ class Chat {
 
     Status stop() {
       if (!err) {
-        err = USI_TWI_Master_Stop();
+        err = USI_TWI_Master_Stop<Device>();
       }
       return Status { err, location };
     }

@@ -7,7 +7,8 @@ struct GlyphsOnQuarter {
   static constexpr uint8_t WIDTH_3DIGITS = 3 * (MARGIN + Glyph::SEGS + MARGIN);
   static constexpr uint8_t WIDTH_4DIGITS = 4 * (MARGIN + Glyph::SEGS + MARGIN);
 
-  static void send(OLED::QuarterChat& chat, Glyph const& glyph, uint8_t margin = 0) {
+  template <typename Device>
+  static void send(OLED::QuarterChat<Device>& chat, Glyph const& glyph, uint8_t margin = 0) {
     chat.sendSpacing(margin);
     for (uint8_t x = 0; x < Glyph::SEGS; ++x) {
       byte seg = glyph.seg(x);
@@ -16,7 +17,8 @@ struct GlyphsOnQuarter {
     chat.sendSpacing(margin);
   }
 
-  static void send3digits(OLED::QuarterChat& chat, uint8_t number) {
+  template <typename Device>
+  static void send3digits(OLED::QuarterChat<Device>& chat, uint8_t number) {
     uint8_t const p1 = number / 100;
     uint8_t const p2 = number % 100;
     send(chat, Glyph::digit[p1], MARGIN);
@@ -24,7 +26,8 @@ struct GlyphsOnQuarter {
     send(chat, Glyph::digit[p2 % 10], MARGIN);
   }
 
-  static void send4digits(OLED::QuarterChat& chat, int number) {
+  template <typename Device>
+  static void send4digits(OLED::QuarterChat<Device>& chat, int number) {
     constexpr uint8_t NUM_ERR_GLYPHS = 5;
     static_assert(WIDTH_4DIGITS == NUM_ERR_GLYPHS * Glyph::SEGS);
     if (number < 0) {

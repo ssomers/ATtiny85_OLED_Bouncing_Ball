@@ -19,79 +19,85 @@ class OLED {
     };
 
     // Full conversation with SSD 1306.
-    class Chat : public I2C::Chat {
+    template <typename Device>
+    class Chat : public I2C::Chat<Device> {
+        using super = I2C::Chat<Device>;
       public:
-        Chat(byte address, uint8_t start_location) : I2C::Chat{address, start_location} {}
+        explicit Chat(uint8_t start_location) : I2C::Chat<Device>(start_location) {}
 
         Chat& init() {
-          send(PAYLOAD_COMMAND).send(0x8D); // Set charge pump (powering the OLED grid)…
-          send(PAYLOAD_COMMAND).send(0x14); // …enabled.
+          super::send(PAYLOAD_COMMAND).send(0x8D); // Set charge pump (powering the OLED grid)…
+          super::send(PAYLOAD_COMMAND).send(0x14); // …enabled.
           return *this;
         }
 
         Chat& set_enabled(bool enabled = true) {
-          send(PAYLOAD_COMMAND).send(byte{0xAE} | byte{enabled});
+          super::send(PAYLOAD_COMMAND).send(byte{0xAE} | byte{enabled});
           return *this;
         }
 
         Chat& set_contrast(uint8_t fraction) {
-          send(PAYLOAD_COMMAND).send(0x81);
-          send(PAYLOAD_COMMAND).send(fraction);
+          super::send(PAYLOAD_COMMAND).send(0x81);
+          super::send(PAYLOAD_COMMAND).send(fraction);
           return *this;
         }
 
         Chat& set_addressing_mode(Addressing mode) {
-          send(PAYLOAD_COMMAND).send(0x20);
-          send(PAYLOAD_COMMAND).send(mode);
+          super::send(PAYLOAD_COMMAND).send(0x20);
+          super::send(PAYLOAD_COMMAND).send(mode);
           return *this;
         }
 
         Chat& set_column_address(uint8_t start = 0, uint8_t end = WIDTH - 1) {
-          send(PAYLOAD_COMMAND).send(0x21);
-          send(PAYLOAD_COMMAND).send(start);
-          send(PAYLOAD_COMMAND).send(end);
+          super::send(PAYLOAD_COMMAND).send(0x21);
+          super::send(PAYLOAD_COMMAND).send(start);
+          super::send(PAYLOAD_COMMAND).send(end);
           return *this;
         }
 
         Chat& set_page_address(uint8_t start = 0, uint8_t end = 7) {
-          send(PAYLOAD_COMMAND).send(0x22);
-          send(PAYLOAD_COMMAND).send(start);
-          send(PAYLOAD_COMMAND).send(end);
+          super::send(PAYLOAD_COMMAND).send(0x22);
+          super::send(PAYLOAD_COMMAND).send(start);
+          super::send(PAYLOAD_COMMAND).send(end);
           return *this;
         }
 
         Chat& set_page_start_address(uint8_t pageN) {
           set_addressing_mode(PageAddressing);
-          send(PAYLOAD_COMMAND).send(byte{0xB0} | pageN);
+          super::send(PAYLOAD_COMMAND).send(byte{0xB0} | pageN);
           return *this;
         }
 
         // You can only send the data and stop this chat after this.
-        I2C::Chat& start_data() {
-          return send(PAYLOAD_DATA);
+        I2C::Chat<Device>& start_data() {
+          return super::send(PAYLOAD_DATA);
         }
     };
 
-    // Data conversation with SSD 1306 addressing two consecutive pages (i.e. one of four rows).
-    class QuarterChat : public I2C::Chat {
+    // Data conversation with SSD 1306 addressing two consecutive pages.
+    template <typename Device>
+    class QuarterChat : public I2C::Chat<Device> {
+        using super = I2C::Chat<Device>;
       public:
-        QuarterChat(uint8_t address, uint8_t quarter, uint8_t xBegin = 0, uint8_t xEnd = OLED::WIDTH - 1)
-          : I2C::Chat{OLED::Chat(address, 20)
-                      .set_page_address(quarter * 2, quarter * 2 + 1)
-                      .set_column_address(xBegin, xEnd)
-                      .start_data()}
-        {}
+        explicit QuarterChat(uint8_t quarter, uint8_t xBegin = 0, uint8_t xEnd = OLED::WIDTH - 1)
+          : I2C::Chat<Device> (
+              OLED::Chat<Device>(20)
+              .set_page_address(quarter * 2, quarter * 2 + 1)
+              .set_column_address(xBegin, xEnd)
+              .start_data()
+            ) {
+        }
 
         // Send one column.
         QuarterChat& send(byte b1, byte b2) {
-          I2C::Chat::send(b1);
-          I2C::Chat::send(b2);
+          super::send(b1);
+          super::send(b2);
           return *this;
         }
 
         // Send N empty columns.
         QuarterChat& sendSpacing(uint16_t width) {
-          I2C::Chat::sendN(width * 2, 0);
+          super::sendN(width * 2, 0);
           return *this;
         }
     };

@@ -1,4 +1,5 @@
 #pragma once
+#include <math.h>
 
 /*****************************************************************************
   Based on https://github.com/adafruit/TinyWireM
@@ -99,7 +100,66 @@ enum USI_TWI_ErrorLevel : unsigned char {
 
 //********** Prototypes **********//
 
+enum USI_TWI_Direction : bool {
+  USI_TWI_SEND = 0,
+  USI_TWI_RCVE = 1
+};
+
+// First byte to be transmitted after a start condition.
+static unsigned char constexpr USI_TWI_Prefix(USI_TWI_Direction direction, unsigned char address) {
+  return address << USI_TWI_ADR_BITS | direction << USI_TWI_READ_BIT;
+}
+
+class USI_TWI_Delay {
+    unsigned long const cycles;
+
+  public:
+    constexpr USI_TWI_Delay(double us)
+      : cycles(us <= 0 ? 0 : ceil(us / 1e6 * F_CPU) - 1)
+        // - 1 because whatever we did before or do next takes at least 1 cycle to have effect
+    {}
+
+    inline void wait() const {
+      __builtin_avr_delay_cycles(cycles);
+    }
+};
+
+/* Device concept:
+struct Device {
+  static constexpr uint8_t ADDRESS;
+  static constexpr USI_TWI_Delay tHSTART;
+  static constexpr USI_TWI_Delay tSSTOP;
+  static constexpr USI_TWI_Delay tIDLE;
+  static constexpr USI_TWI_Delay tPRE_SCL_HIGH;
+  static constexpr USI_TWI_Delay tPOST_SCL_HIGH;
+  static constexpr USI_TWI_Delay tPOST_TRANSFER;
+};
+*/
+
 void               USI_TWI_Master_Initialise();
-USI_TWI_ErrorLevel USI_TWI_Master_Start_Sending(unsigned char address);
-USI_TWI_ErrorLevel USI_TWI_Master_Send(unsigned char msg);
+
+template <typename Device>
+static USI_TWI_ErrorLevel USI_TWI_Master_Start();
+
+template <typename Device>
+static USI_TWI_ErrorLevel USI_TWI_Master_Transmit(unsigned char msg, bool isAddress);
+
+template <typename Device>
+USI_TWI_ErrorLevel USI_TWI_Master_Start_Sending() {
+  auto err = USI_TWI_Master_Start<Device>();
+  if (err) return err;
+  return USI_TWI_Master_Transmit<Device>(USI_TWI_Prefix(USI_TWI_SEND, Device::ADDRESS), true);
+}
+
+template <typename Device>
+USI_TWI_ErrorLevel USI_TWI_Master_Send(unsigned char msg) {
+  return USI_TWI_Master_Transmit<Device>(msg, false);
+}
+
+template <typename Device>
+USI_TWI_ErrorLevel USI_TWI_Master_Receive(unsigned char* buf, unsigned char len);
+
+template <typename Device>
 USI_TWI_ErrorLevel USI_TWI_Master_Stop();
+
+#include "USI_TWI_Master.hpp"
