@@ -73,18 +73,19 @@ static void flashN(uint8_t number) {
   }
 }
 
-// Report error when we're unsure the display is accessible.
+// Report error when the display isn't set up.
 static void flashError(I2C::Status status) {
   if (status.errorlevel) {
-    delay(300);
-    flashN(status.errorlevel);
-    delay(600);
-    flashN(status.location);
-    delay(900);
+    for (;;) {
+      delay(1200);
+      flashN(status.errorlevel);
+      delay(600);
+      flashN(status.location);
+    }
   }
 }
 
-// Report error when there's a good chance the display is accessible.
+// Report error when we think we can display it.
 static void displayError(I2C::Status status) {
   if (status.errorlevel) {
     auto chat = OLED::QuarterChat<OLED_DEVICE> {3};
@@ -93,9 +94,7 @@ static void displayError(I2C::Status status) {
     GlyphsOnQuarter::send(chat, Glyph::overflow);
     GlyphsOnQuarter::send3digits(chat, status.location);
     GlyphsOnQuarter::send(chat, Glyph::overflow);
-    for (;;) {
-      flashError(status);
-    }
+    flashError(status);
   }
 }
 
@@ -141,7 +140,7 @@ static I2C::Status displayRoom() {
 static void move() {
   for (uint8_t twice = 0; twice < 2; ++twice) {
     // We consider the ball to be a square for collision detection.
-    // Add size of the ball in pixels when moving in a positive direction,
+    // When moving in a positive direction, add the size of the ball
     // because that's the edge of the square possibly hitting a wall.
     uint8_t const edgeY = ballY + ballYDir + (ballYDir < 0 ? 0 : Y_PER_ROW - 1);
     uint8_t const edgeX = ballX + ballXDir + (ballXDir < 0 ? 0 : X_PER_COL - 1);

@@ -4,7 +4,8 @@
 
 namespace I2C {
 
-// Two numbers describing either success (if errorlevel is zero) or an error.
+// Two numbers describing either success (if errorlevel is zero) or a
+// communication error, and where it occurred.
 struct Status {
   uint8_t errorlevel;
   uint8_t location;
@@ -18,6 +19,7 @@ class Chat {
     uint8_t location;
 
   public:
+    // start_location is merely the initial value of a counter for error reporting.
     explicit Chat(uint8_t start_location) :
       err{USI_TWI_Master_Start_Sending<Device>()},
       location{start_location} {
@@ -38,8 +40,9 @@ class Chat {
     }
 
     // Send the same byte many times.
-    Chat& sendN(uint16_t count, byte msg) {
-      for (uint16_t _ = 0; _ < count; ++_) {
+    template <typename I>
+    Chat& sendN(I count, byte msg) {
+      for (I i = 0; i < count; ++i) {
         send(msg);
       }
       return *this;

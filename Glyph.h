@@ -21,11 +21,11 @@ class Glyph {
     byte const seg6;
     byte const seg7;
 
-    constexpr static bool pixel(char c) {
+    static constexpr bool pixel(char c) {
       return c != ' ';
     }
 
-    constexpr static byte extractSegAt(int x, const char* col_per_row) {
+    static constexpr byte extractSegAt(int x, const char* col_per_row) {
       return 0
              | pixel(col_per_row[x + SEGS * 0]) << 0
              | pixel(col_per_row[x + SEGS * 1]) << 1
@@ -60,7 +60,7 @@ class Glyph {
         case 5: return pgm_read_byte(&seg5);
         case 6: return pgm_read_byte(&seg6);
         case 7: return pgm_read_byte(&seg7);
-        default: return 0;
+        default: return 0; // not used and compiled away
       }
     }
 };
