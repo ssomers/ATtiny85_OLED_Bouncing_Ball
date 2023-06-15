@@ -77,10 +77,10 @@ static void flashN(uint8_t number) {
 static void flashError(I2C::Status status) {
   if (status.errorlevel) {
     for (;;) {
-      delay(1200);
       flashN(status.errorlevel);
       delay(600);
       flashN(status.location);
+      delay(1200);
     }
   }
 }
@@ -89,11 +89,11 @@ static void flashError(I2C::Status status) {
 static void displayError(I2C::Status status) {
   if (status.errorlevel) {
     auto chat = OLED::QuarterChat<OLED_DEVICE> {3};
-    GlyphsOnQuarter::send(chat, Glyph::overflow);
-    GlyphsOnQuarter::send3digits(chat, status.errorlevel);
-    GlyphsOnQuarter::send(chat, Glyph::overflow);
-    GlyphsOnQuarter::send3digits(chat, status.location);
-    GlyphsOnQuarter::send(chat, Glyph::overflow);
+    GlyphsOnQuarter::sendTo(chat, Glyph::X);
+    GlyphsOnQuarter::send3dec(chat, status.errorlevel);
+    GlyphsOnQuarter::sendTo(chat, Glyph::X);
+    GlyphsOnQuarter::send3dec(chat, status.location);
+    GlyphsOnQuarter::sendTo(chat, Glyph::X);
     flashError(status);
   }
 }
@@ -160,7 +160,6 @@ static void move() {
   }
   displayError(I2C::Status { 11, 0 }); // trapped between walls
 }
-
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
