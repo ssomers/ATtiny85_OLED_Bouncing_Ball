@@ -163,26 +163,26 @@ Glyph PROGMEM const Glyph::X = {
   "#      #"
 };
 
-Glyph PROGMEM const Glyph::pin[] = {
-  {
-    "###   # "
-    "#  #    "
-    "#  #  # "
-    "###   # "
-    "#     # "
-    "#     # "
-    "#     # "
-    "#      #"
-  }, {
-    "        "
-    "        "
-    " # ##   "
-    " ##  #  "
-    " #   #  "
-    " #   #  "
-    " #   #  "
-    " #   #  "
-  }
+GlyphPair PROGMEM const GlyphPair::pin = {
+  "###   #         "
+  "#  #            "
+  "#  #  #   # ##  "
+  "###   #   ##  # "
+  "#     #   #   # "
+  "#     #   #   # "
+  "#     #   #   # "
+  "#      #  #   # "
+};
+
+GlyphPair PROGMEM const GlyphPair::cm = {
+  "                "
+  "                "
+  " ###   # ### ## "
+  "#   #  ##  ##  #"
+  "#      #   #   #"
+  "#      #   #   #"
+  "#   #  #   #   #"
+  " ###   #   #   #"
 };
 
 Glyph PROGMEM const Glyph::minus = {

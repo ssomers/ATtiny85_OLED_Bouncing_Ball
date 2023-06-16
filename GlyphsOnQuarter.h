@@ -5,9 +5,7 @@
 namespace GlyphsOnQuarter {
 
 static constexpr uint8_t DIGIT_MARGIN = 1;
-static constexpr uint8_t DIGITS_WIDTH(uint8_t N) {
-  return N * (DIGIT_MARGIN + Glyph::SEGS + DIGIT_MARGIN);
-}
+static constexpr uint8_t DIGIT_WIDTH = DIGIT_MARGIN + Glyph::SEGS + DIGIT_MARGIN;
 
 template <typename Device>
 void sendTo(OLED::QuarterChat<Device>& chat, Glyph const& glyph, uint8_t margin = 0) {
@@ -45,7 +43,7 @@ void send3dec(OLED::QuarterChat<Device>& chat, uint8_t number) {
 template <typename Device>
 void send4dec(OLED::QuarterChat<Device>& chat, int number) {
   constexpr uint8_t NUM_ERR_GLYPHS = 5;
-  static_assert(DIGITS_WIDTH(4) == NUM_ERR_GLYPHS * Glyph::SEGS);
+  static_assert(DIGIT_WIDTH * 4 == NUM_ERR_GLYPHS * Glyph::SEGS);
   if (number < 0) {
     for (uint8_t _ = 0; _ < NUM_ERR_GLYPHS; ++_) {
       sendTo(chat, Glyph::minus);
@@ -60,9 +58,21 @@ void send4dec(OLED::QuarterChat<Device>& chat, int number) {
     }
     return;
   }
-  sendTo(chat, Glyph::dec_digit[p1 / 10], DIGIT_MARGIN);
-  sendTo(chat, Glyph::dec_digit[p1 % 10], DIGIT_MARGIN);
-  sendTo(chat, Glyph::dec_digit[p2 / 10], DIGIT_MARGIN);
+  if (p1 >= 10) {
+    sendTo(chat, Glyph::dec_digit[p1 / 10], DIGIT_MARGIN);
+  } else {
+    chat.sendSpacing(DIGIT_WIDTH);
+  }
+  if (p1 != 0) {
+    sendTo(chat, Glyph::dec_digit[p1 % 10], DIGIT_MARGIN);
+  } else {
+    chat.sendSpacing(DIGIT_WIDTH);
+  }
+  if (p1 != 0 || p2 >= 10) {
+    sendTo(chat, Glyph::dec_digit[p2 / 10], DIGIT_MARGIN);
+  } else {
+    chat.sendSpacing(DIGIT_WIDTH);
+  }
   sendTo(chat, Glyph::dec_digit[p2 % 10], DIGIT_MARGIN);
 }
 
