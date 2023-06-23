@@ -163,37 +163,15 @@ Glyph PROGMEM const Glyph::X = {
   "#      #"
 };
 
-GlyphPair PROGMEM const GlyphPair::pin = {
-  "###   #         "
-  "#  #            "
-  "#  #  #   # ##  "
-  "###   #   ##  # "
-  "#     #   #   # "
-  "#     #   #   # "
-  "#     #   #   # "
-  "#      #  #   # "
-};
-
-GlyphPair PROGMEM const GlyphPair::cm = {
-  "                "
-  "                "
-  " ###   # ### ## "
-  "#   #  ##  ##  #"
-  "#      #   #   #"
-  "#      #   #   #"
-  "#   #  #   #   #"
-  " ###   #   #   #"
-};
-
-Glyph PROGMEM const Glyph::minus = {
-  "        "
-  "        "
-  "        "
-  " ###### "
-  " ###### "
-  "        "
-  "        "
-  "        "
+Glyph PROGMEM const Glyph::at = {
+  "  ####  "
+  " #    # "
+  "#  ##  #"
+  "# #  # #"
+  "# #  # #"
+  "#  #### "
+  " #      "
+  "  ##### "
 };
 
 Glyph PROGMEM const Glyph::plus = {
@@ -207,13 +185,46 @@ Glyph PROGMEM const Glyph::plus = {
   "        "
 };
 
-Glyph PROGMEM const Glyph::colon = {
-  "        "
-  "   ##   "
-  "   ##   "
-  "        "
-  "        "
-  "   ##   "
-  "   ##   "
-  "        "
+GlyphPair PROGMEM const GlyphPair::cm = {
+  "                "
+  "                "
+  " ###   # ### ## "
+  "#   #  ##  ##  #"
+  "#      #   #   #"
+  "#      #   #   #"
+  "#   #  #   #   #"
+  " ###   #   #   #"
+};
+
+GlyphPair PROGMEM const GlyphPair::m = {
+  "                "
+  "                "
+  "   # ### ##     "
+  "   ##  ##  #    "
+  "   #   #   #    "
+  "   #   #   #    "
+  "   #   #   #    "
+  "   #   #   #    "
+};
+
+GlyphPair PROGMEM const GlyphPair::err = {
+  "                "
+  "                "
+  " ###   # ## # ##"
+  "#   #  ##   ##  "
+  "#####  #    #   "
+  "#      #    #   "
+  "#   #  #    #   "
+  " ###   #    #   "
+};
+
+GlyphPair PROGMEM const GlyphPair::pin = {
+  "###   #         "
+  "#  #            "
+  "#  #  #   # ##  "
+  "###   #   ##  # "
+  "#     #   #   # "
+  "#     #   #   # "
+  "#     #   #   # "
+  "#      #  #   # "
 };

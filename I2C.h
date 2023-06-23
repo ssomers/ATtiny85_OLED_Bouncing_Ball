@@ -4,10 +4,10 @@
 
 namespace I2C {
 
-// Two numbers describing either success (if errorlevel is zero),
-// or a communication error and at which step it occurred.
+// Two numbers describing either success (if error is zero),
+// or a non-zero communication error and at which step it occurred.
 struct Status {
-  uint8_t errorlevel;
+  uint8_t error;
   uint8_t location;
 };
 

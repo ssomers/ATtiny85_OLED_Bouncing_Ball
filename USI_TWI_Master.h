@@ -30,7 +30,7 @@ enum USI_TWI_ErrorLevel : unsigned char {
   USI_TWI_ME_START_CON = 8, //!< Missing Expected Start Condition
   USI_TWI_UE_START_CON = 7, //!< Unexpected Start Condition
   USI_TWI_UE_STOP_CON = 6,  //!< Unexpected Stop Condition
-  USI_TWI_UE_DATA_COL = 5,  //!< Unexpected Data Collision (arbitration)
+  USI_TWI_UE_DATA_COL = 5,  //!< Unexpected Data Collision (arbitration, or SDA is simply disconnected)
   USI_TWI_NO_ACK_ON_DATA = 2, //!< The slave did not acknowledge all data
   USI_TWI_NO_ACK_ON_ADDRESS = 1, //!< The slave did not acknowledge the address
   USI_TWI_MISSING_START_CON = 3, //!< Generated Start Condition not detected on bus

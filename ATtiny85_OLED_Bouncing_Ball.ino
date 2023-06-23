@@ -73,27 +73,29 @@ static void flashN(uint8_t number) {
   }
 }
 
-// Report error when the display isn't set up.
+// Report an error while the display isn't set up.
 static void flashError(I2C::Status status) {
-  if (status.errorlevel) {
+  if (status.error) {
     for (;;) {
-      flashN(status.errorlevel);
+      delay(1200);
+      flashN(status.error);
       delay(600);
       flashN(status.location);
-      delay(1200);
     }
   }
 }
 
-// Report error when we think we can display it.
+// Report an error while we think we can display it.
 static void displayError(I2C::Status status) {
-  if (status.errorlevel) {
-    auto chat = OLED::QuarterChat<OLED_DEVICE> {3};
-    GlyphsOnQuarter::sendTo(chat, Glyph::X);
-    GlyphsOnQuarter::send3dec(chat, status.errorlevel);
-    GlyphsOnQuarter::sendTo(chat, Glyph::X);
-    GlyphsOnQuarter::send3dec(chat, status.location);
-    GlyphsOnQuarter::sendTo(chat, Glyph::X);
+  if (status.error) {
+    auto chat = GlyphsOnQuarter<OLED_DEVICE> {3, OLED::Quarter::D};
+    chat.sendSpacing(3);
+    chat.send(GlyphPair::err.left);
+    chat.send(GlyphPair::err.right);
+    chat.send3dec(status.error);
+    chat.sendSpacing(3);
+    chat.send(Glyph::at);
+    chat.send3dec(status.location);
     flashError(status);
   }
 }
@@ -172,7 +174,7 @@ void setup() {
              .set_page_address()
              .set_enabled()
              .stop();
-  if (!err.errorlevel) {
+  if (!err.error) {
     err = displayRoom();
   }
   digitalWrite(LED_BUILTIN, LOW);
@@ -183,5 +185,6 @@ void loop() {
   digitalWrite(LED_BUILTIN, HIGH);
   move();
   digitalWrite(LED_BUILTIN, LOW);
-  displayError(displayRoom());
+  auto err = displayRoom();
+  displayError(err);
 }
