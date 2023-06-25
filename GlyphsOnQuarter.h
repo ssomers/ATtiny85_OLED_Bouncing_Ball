@@ -35,48 +35,39 @@ class GlyphsOnQuarter : public OLED::QuarterChat<Device> {
       , include_heartbeat(include_heartbeat) {
     }
 
-    GlyphsOnQuarter& send(byte seg) {
-      if (toggle_heartbeat()) {
-        super::send(seg << 4 | HEARTBEAT_SEG1,
-                    seg >> 4 | HEARTBEAT_SEG2);
-      } else {
-        super::send(seg << 4,
-                    seg >> 4);
+    GlyphsOnQuarter& send(byte seg, uint8_t times = 1) {
+      for (uint8_t x = 0; x < times; ++x) {
+        if (toggle_heartbeat()) {
+          super::send(seg << 4 | HEARTBEAT_SEG1,
+                      seg >> 4 | HEARTBEAT_SEG2);
+        } else {
+          super::send(seg << 4,
+                      seg >> 4);
+        }
       }
       return *this;
     }
 
     GlyphsOnQuarter& send(Glyph const& glyph, uint8_t margin = 0) {
-      sendSpacing(margin);
+      send(0, margin);
       for (uint8_t x = 0; x < Glyph::SEGS; ++x) {
         send(glyph.seg(x));
       }
-      sendSpacing(margin);
-      return *this;
-    }
-
-    GlyphsOnQuarter& sendSpacing(uint8_t width) {
-      for (uint8_t i = 0; i < width; ++i) {
-        send(0);
-      }
+      send(0, margin);
       return *this;
     }
 
     GlyphsOnQuarter& sendColon() {
-      sendSpacing(Glyph::DIGIT_MARGIN);
-      for (int x = 0; x < Glyph::POINT_WIDTH - 2 * Glyph::DIGIT_MARGIN; ++x) {
-        send(Glyph::COLON_SEG);
-      }
-      sendSpacing(Glyph::DIGIT_MARGIN);
+      send(0, Glyph::DIGIT_MARGIN);
+      send(Glyph::COLON_SEG, Glyph::POINT_WIDTH - 2 * Glyph::DIGIT_MARGIN);
+      send(0, Glyph::DIGIT_MARGIN);
       return *this;
     }
 
     GlyphsOnQuarter& sendPoint() {
-      sendSpacing(Glyph::DIGIT_MARGIN);
-      for (int x = 0; x < Glyph::POINT_WIDTH - 2 * Glyph::DIGIT_MARGIN; ++x) {
-        send(Glyph::POINT_SEG);
-      }
-      sendSpacing(Glyph::DIGIT_MARGIN);
+      send(0, Glyph::DIGIT_MARGIN);
+      send(Glyph::POINT_SEG, Glyph::POINT_WIDTH - 2 * Glyph::DIGIT_MARGIN);
+      send(0, Glyph::DIGIT_MARGIN);
       return *this;
     }
 
@@ -100,12 +91,12 @@ class GlyphsOnQuarter : public OLED::QuarterChat<Device> {
       if (p1 != 0) {
         send(Glyph::dec_digit[p1], Glyph:: DIGIT_MARGIN);
       } else {
-        sendSpacing(Glyph::DIGIT_WIDTH);
+        send(0, Glyph::DIGIT_WIDTH);
       }
       if (p1 != 0 || p2 >= 10) {
         send(Glyph::dec_digit[p2 / 10], Glyph::DIGIT_MARGIN);
       } else {
-        sendSpacing(Glyph::DIGIT_WIDTH);
+        send(0, Glyph::DIGIT_WIDTH);
       }
       send(Glyph::dec_digit[p2 % 10], Glyph::DIGIT_MARGIN);
       return *this;
@@ -113,33 +104,29 @@ class GlyphsOnQuarter : public OLED::QuarterChat<Device> {
 
     GlyphsOnQuarter& send4dec(int number) {
       if (number < 0) {
-        for (uint8_t x = 0; x < Glyph::DIGIT_WIDTH * 4; ++x) {
-          send(Glyph::MINUS_SEG);
-        }
+        send(Glyph::MINUS_SEG, Glyph::DIGIT_WIDTH * 4);
         return *this;
       }
       uint8_t p1 = number / 100;
       uint8_t p2 = number % 100;
       if (p1 >= 100) {
-        for (uint8_t x = 0; x < Glyph::DIGIT_WIDTH * 4; ++x) {
-          send(0xFF);
-        }
+        send(~0, Glyph::DIGIT_WIDTH * 4);
         return *this;
       }
       if (p1 >= 10) {
         send(Glyph::dec_digit[p1 / 10], Glyph::DIGIT_MARGIN);
       } else {
-        sendSpacing(Glyph::DIGIT_WIDTH);
+        send(0, Glyph::DIGIT_WIDTH);
       }
       if (p1 != 0) {
         send(Glyph::dec_digit[p1 % 10], Glyph::DIGIT_MARGIN);
       } else {
-        sendSpacing(Glyph::DIGIT_WIDTH);
+        send(0, Glyph::DIGIT_WIDTH);
       }
       if (p1 != 0 || p2 >= 10) {
         send(Glyph::dec_digit[p2 / 10], Glyph::DIGIT_MARGIN);
       } else {
-        sendSpacing(Glyph::DIGIT_WIDTH);
+        send(0, Glyph::DIGIT_WIDTH);
       }
       send(Glyph::dec_digit[p2 % 10], Glyph::DIGIT_MARGIN);
       return *this;

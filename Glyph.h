@@ -102,6 +102,8 @@ class Glyph {
 
 class GlyphPair {
   public:
+    static uint8_t constexpr WIDTH = 2 * Glyph::SEGS;
+
     static GlyphPair PROGMEM const cm;
     static GlyphPair PROGMEM const m;
     static GlyphPair PROGMEM const err;

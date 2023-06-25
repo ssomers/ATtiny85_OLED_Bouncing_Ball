@@ -89,11 +89,11 @@ static void flashError(I2C::Status status) {
 static void displayError(I2C::Status status) {
   if (status.error) {
     auto chat = GlyphsOnQuarter<OLED_DEVICE> {3, OLED::Quarter::D};
-    chat.sendSpacing(3);
+    chat.send(0, 3);
     chat.send(GlyphPair::err.left);
     chat.send(GlyphPair::err.right);
     chat.send3dec(status.error);
-    chat.sendSpacing(3);
+    chat.send(0, 3);
     chat.send(Glyph::at);
     chat.send3dec(status.location);
     flashError(status);
